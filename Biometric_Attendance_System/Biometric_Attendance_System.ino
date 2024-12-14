@@ -565,8 +565,8 @@ void insertRecord() {
       display.setTextColor(SSD1306_WHITE);        // Draw white text
       display.drawBitmap(47, 0, ok_bmp, 35, 45, 1);
       //display.setCursor(0, 60);            // Start at top-left corner
-      //display.println(("Enroll Sucess"));
-      oledDisplayCenter("Enroll Sucess!!", 0, 60);
+      //display.println(("Enroll Success"));
+      oledDisplayCenter("Enroll Success!!", 0, 60);
       display.display();
       delay(2000);
     }
