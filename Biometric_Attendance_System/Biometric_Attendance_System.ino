@@ -777,7 +777,7 @@ void showRecords() {
     server.send(301);
     return;
   }
-  web_content = "<table style='width:90%; margin-left:5%'><tr><th>Sl.No</th><th>Empl.ID</th><th>Employee Name</th><th>Employee Email</th><th>Position</th><th>FID</th><th>DEL</th></tr>";
+ web_content = "<table style='width:90%; margin-left:5%'><tr><th>Sl.No</th><th>Roll No.</th><th>Student Name</th><th>Contact No.</th><th>Year</th><th>FID</th><th>DEL</th></tr>";
   String sql = "Select * from attendance";
   if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
     web_content += "</table>";
