@@ -1015,9 +1015,9 @@ int FingerprintID()
   String SFPID = String (finger.fingerID);
   sql = "SELECT EXISTS(SELECT 1 from date" + temp + " where id =" + SFPID + " LIMIT 1)";
   rc = db_exec1(test1_db, sql.c_str());
-  Serial.print("SQL retun : ");
+  Serial.print("SQL return : ");
   Serial.println(sqlreturn);
-  if (sqlreturn == 1)
+  if (sqlreturn%2 == 1)
   {
     att = "Punch Out";
   }
@@ -1029,7 +1029,7 @@ int FingerprintID()
   rc = db_exec1(test1_db, sql.c_str());
   Serial.print("No times : ");
   Serial.println(sqlreturn);
-  if (sqlreturn < 2)
+  if (sqlreturn < 100)
   {
     String hr = "";
     if (now.hour() < 10 || (now.hour() > 12 && now.hour() < 22))
