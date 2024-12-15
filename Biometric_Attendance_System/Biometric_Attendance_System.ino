@@ -13,10 +13,10 @@
 #include "src/Adafruit_SSD1306/RTClib.h"
 #include "src/Adafruit_Fingerprint_Sensor_Library/Adafruit_Fingerprint.h"
 #include "src/esp32_arduino_sqlite3_lib/sqlite3.h"               //https://github.com/siara-cc/esp32_arduino_sqlite3_lib
-#include "config/credits.h"
-#include "config/robotbold10.h"
-#include "config/seg.h"
-#include "config/icons.h"
+#include "credits.h"
+#include "robotbold10.h"
+#include "seg.h"
+#include "icons.h"
 RTC_DS1307 rtc;
 char nameoftheday[7][12] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char month_name[12][12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
