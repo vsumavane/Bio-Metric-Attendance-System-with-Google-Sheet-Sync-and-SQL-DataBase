@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <time.h>
-#include "sqlite3.h"
+#include <sqlite3.h>
 #include <Arduino.h>
 #include <esp_spi_flash.h>
 #include <sys/stat.h>
@@ -300,7 +300,7 @@ static int ESP32FileSize(sqlite3_file *pFile, sqlite_int64 *pSize){
 
 	struct stat st;
 	int fno = fileno(p->fp);
-	if (fno == -1)
+	if (fno < 0)
 		return SQLITE_IOERR_FSTAT;
 	if (fstat(fno, &st))
 		return SQLITE_IOERR_FSTAT;
@@ -383,6 +383,8 @@ static int ESP32Access(
   return SQLITE_OK;
 }
 
+static char dbrootpath[MAXPATHNAME+1];
+
 /*
 ** Open a file handle.
 */
@@ -416,9 +418,6 @@ static int ESP32Open(
       //Serial.println("fn: Open");
 
 	strcpy(mode, "r");
-  if( zName==0 ){
-    return SQLITE_IOERR;
-  }
 
   if( flags&SQLITE_OPEN_MAIN_JOURNAL ){
     aBuf = (char *)sqlite3_malloc(SQLITE_ESP32VFS_BUFFERSZ);
@@ -431,9 +430,9 @@ static int ESP32Open(
           || flags&SQLITE_OPEN_MAIN_JOURNAL ) {
     struct stat st;
     memset(&st, 0, sizeof(struct stat));
-    int rc = stat( zName, &st );
+    int rc = (zName == 0 ? -1 : stat( zName, &st ));
     //Serial.println(zName);
-		if (rc == -1) {
+		if (rc < 0) {
       strcpy(mode, "w+");
       //int fd = open(zName, (O_CREAT | O_RDWR | O_EXCL), S_IRUSR | S_IWUSR);
       //close(fd);
@@ -446,8 +445,41 @@ static int ESP32Open(
   memset(p, 0, sizeof(ESP32File));
   //p->fd = open(zName, oflags, 0600);
   //p->fd = open(zName, oflags, S_IRUSR | S_IWUSR);
-  p->fp = fopen(zName, mode);
-  if( p->fp<=0){
+  if (zName == 0) {
+    //generate a temporary file name
+    char *tName = tmpnam(NULL);
+    tName[4] = '_';
+    size_t len = strlen(dbrootpath);
+    memmove(tName + len, tName, strlen(tName) + 1);
+    memcpy(tName, dbrootpath, len);    
+    p->fp = fopen(tName, mode);
+    //https://stackoverflow.com/questions/64424287/how-to-delete-a-file-in-c-using-a-file-descriptor
+    //for temp file, then no need to handle in esp32close
+    unlink(tName);
+    //Serial.println("Temporary file name generated: " + String(tName) + " mode: " + String(mode));
+  } else {
+    //detect database root as folder for temporary files, every newly openened db will change this path
+    //this mainly fixes that vfs's have their own root name like /sd
+    char *ext = strrchr(zName, '.');
+    bool isdb = false;
+    if (ext) {
+      isdb = (strcmp(ext+1,"db") == 0);
+    }
+    if (isdb) {      
+      char zDir[MAXPATHNAME+1];
+      int i=0;
+      strcpy(zDir,zName);
+
+      for(i=1; zDir[i]!='/'; i++) {};
+      zDir[i] = '\0';
+
+      strcpy(dbrootpath, zDir);
+    }
+
+    p->fp = fopen(zName, mode);
+  }
+
+  if( p->fp == NULL){
     if (aBuf)
       sqlite3_free(aBuf);
     //Serial.println("Can't open");
@@ -489,7 +521,7 @@ static int ESP32Delete(sqlite3_vfs *pVfs, const char *zPath, int dirSync){
 
     /* Open a file-descriptor on the directory. Sync. Close. */
     dfd = fopen(zDir, "r");
-    if( dfd<=0 ){
+    if( dfd == (void *)NULL ){
       rc = -1;
     }else{
       rc = fflush(dfd);
