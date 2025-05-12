@@ -82,7 +82,7 @@ int openDb();
 static int callback();
 int db_exec();
 bool loadFromSPIFFS();
-bool is_authentified();
+bool is_authenticated();
 void handleLogin();
 void logout();
 void handleRoot();
@@ -437,7 +437,7 @@ bool loadFromSPIFFS(String path) {
   return true;
 }
 //Check if header is present and correct
-bool is_authentified() {
+bool is_authenticated() {
   Serial.println("Enter is_authentified");
   if (server.hasHeader("Cookie")) {
     Serial.print("Found cookie: ");
@@ -499,7 +499,7 @@ void logout() {
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
 void handleRoot() {
-  if (!is_authentified()) {
+  if (!is_authenticated()) {
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
     server.send(301);
@@ -510,7 +510,7 @@ void handleRoot() {
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
 void Settings() {
-  if (!is_authentified()) {
+  if (!is_authenticated()) {
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
     server.send(301);
@@ -771,7 +771,7 @@ void deleteRecord() {
 }
 /*--------------------------------------------------------*/
 void showRecords() {
-  if (!is_authentified()) {
+  if (!is_authenticated()) {
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
     server.send(301);
@@ -791,7 +791,7 @@ void showRecords() {
 
 /*--------------------------------------------------------*/
 void newRecordTable() {
-  if (!is_authentified()) {
+  if (!is_authenticated()) {
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
     server.send(301);
