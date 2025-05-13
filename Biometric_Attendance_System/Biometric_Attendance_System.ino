@@ -17,6 +17,10 @@
 #include "config/robotbold10.h"
 #include "config/seg.h"
 #include "config/icons.h"
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#include "mbedtls/base64.h"
+#include "mbedtls/md.h"
 RTC_DS1307 rtc;
 char nameoftheday[7][12] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 char month_name[12][12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -103,6 +107,8 @@ uint8_t getFingerprintEnroll();
 void connectwifi();
 void offlinedataupload();
 
+// Secret key for JWT signature (keep this safe!)
+const char* JWT_SECRET = "your-very-secret-key";
 
 String web_content = "";
 
@@ -436,19 +442,115 @@ bool loadFromSPIFFS(String path) {
   }
   return true;
 }
-//Check if header is present and correct
+
+// Base64URL encode helper
+String base64UrlEncode(const uint8_t* input, size_t length) {
+  size_t outputLen = 4 * ((length + 2) / 3);
+  uint8_t encoded[outputLen + 1];
+  size_t actualLen;
+
+  mbedtls_base64_encode(encoded, sizeof(encoded), &actualLen, input, length);
+  encoded[actualLen] = '\0';
+
+  String b64 = String((char*)encoded);
+  b64.replace("+", "-");
+  b64.replace("/", "_");
+  b64.replace("=", "");
+  return b64;
+}
+
+// HMAC SHA256 using mbedTLS
+String hmacSha256Base64Url(const String& data, const String& key) {
+  const mbedtls_md_info_t* md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  uint8_t hash[32];
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, md, 1);
+  mbedtls_md_hmac_starts(&ctx, (const uint8_t*)key.c_str(), key.length());
+  mbedtls_md_hmac_update(&ctx, (const uint8_t*)data.c_str(), data.length());
+  mbedtls_md_hmac_finish(&ctx, hash);
+  mbedtls_md_free(&ctx);
+
+  return base64UrlEncode(hash, sizeof(hash));
+}
+
+// Create JWT
+String createJWT(const String& username) {
+  StaticJsonDocument<200> header, payload;
+  header["alg"] = "HS256";
+  header["typ"] = "JWT";
+  payload["user"] = username;
+  payload["exp"] = (millis() / 1000) + 3600;
+
+  String headerStr, payloadStr;
+  serializeJson(header, headerStr);
+  serializeJson(payload, payloadStr);
+
+  String headerB64 = base64UrlEncode((const uint8_t*)headerStr.c_str(), headerStr.length());
+  String payloadB64 = base64UrlEncode((const uint8_t*)payloadStr.c_str(), payloadStr.length());
+
+  String toSign = headerB64 + "." + payloadB64;
+  String signature = hmacSha256Base64Url(toSign, JWT_SECRET);
+
+  return toSign + "." + signature;
+}
+
+// Validate JWT
+bool validateJWT(const String& token, String& username) {
+  int dot1 = token.indexOf('.');
+  int dot2 = token.indexOf('.', dot1 + 1);
+  if (dot1 == -1 || dot2 == -1) return false;
+
+  String headerB64 = token.substring(0, dot1);
+  String payloadB64 = token.substring(dot1 + 1, dot2);
+  String signature = token.substring(dot2 + 1);
+
+  String toSign = headerB64 + "." + payloadB64;
+  String expectedSig = hmacSha256Base64Url(toSign, JWT_SECRET);
+  if (signature != expectedSig) return false;
+
+  // Convert base64url back to standard base64
+  String payloadB64Std = payloadB64;
+  payloadB64Std.replace("-", "+");
+  payloadB64Std.replace("_", "/");
+  while (payloadB64Std.length() % 4 != 0) payloadB64Std += "=";
+
+  // Decode payload
+  size_t payloadLen = (payloadB64Std.length() * 3) / 4;
+  std::vector<uint8_t> decoded(payloadLen);
+  size_t actualLen;
+  if (mbedtls_base64_decode(decoded.data(), payloadLen, &actualLen,
+                            (const uint8_t*)payloadB64Std.c_str(), payloadB64Std.length()) != 0)
+    return false;
+
+  String payloadJson = String((char*)decoded.data(), actualLen);
+  StaticJsonDocument<256> payload;
+  if (deserializeJson(payload, payloadJson) != DeserializationError::Ok) return false;
+
+  if ((millis() / 1000) > (unsigned long)(payload["exp"] | 0)) return false;
+  username = payload["user"].as<String>();
+  return true;
+}
+
 bool is_authenticated() {
-  Serial.println("Enter is_authentified");
+  Serial.println("Enter is_authenticated (JWT)");
   if (server.hasHeader("Cookie")) {
-    Serial.print("Found cookie: ");
     String cookie = server.header("Cookie");
+    Serial.print("Found cookie: ");
     Serial.println(cookie);
-    if (cookie.indexOf("ESPSESSIONID=1") != -1) {
-      Serial.println("Authentification Successful");
-      return true;
+    int idx = cookie.indexOf("JWT=");
+    if (idx != -1) {
+      int endIdx = cookie.indexOf(';', idx);
+      String jwt = cookie.substring(idx + 4, endIdx == -1 ? cookie.length() : endIdx);
+      String username;
+      if (validateJWT(jwt, username)) {
+        Serial.println("JWT Authentication Successful for user: " + username);
+        return true;
+      }
     }
   }
-  Serial.println("Authentification Failed");
+  Serial.println("JWT Authentication Failed");
   return false;
 }
 
@@ -466,19 +568,21 @@ void handleLogin() {
     Serial.println("Disconnection");
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
-    server.sendHeader("Set-Cookie", "ESPSESSIONID=0");
+    server.sendHeader("Set-Cookie", "JWT=; Max-Age=0; Path=/");
     server.send(301);
     return;
   }
   if (server.hasArg("USERNAME") && server.hasArg("PASSWORD")) {
     Serial.println(server.hasArg("USERNAME"));
     Serial.println(server.hasArg("PASSWORD"));
-    if (server.arg("USERNAME") == wwwid_ &&  server.arg("PASSWORD") == wwwpass_) {
+    if (server.arg("USERNAME") == wwwid_ && server.arg("PASSWORD") == wwwpass_) {
+      String jwt = createJWT(server.arg("USERNAME"));
+      String cookie = "JWT=" + jwt + "; Path=/; HttpOnly";
+      server.sendHeader("Set-Cookie", cookie);
       server.sendHeader("Location", "/");
       server.sendHeader("Cache-Control", "no-cache");
-      server.sendHeader("Set-Cookie", "ESPSESSIONID=1");
       server.send(301);
-      Serial.println("Log in Successful");
+      Serial.println("Log in Successful (JWT)");
       return;
     }
     msg = "Wrong username/password! try again.";
@@ -488,13 +592,11 @@ void handleLogin() {
 }
 /*--------------------------------------------------------*/
 void logout() {
-
+  server.sendHeader("Set-Cookie", "JWT=; Max-Age=0; Path=/");
   server.sendHeader("Cache-Control", "no-cache");
-  server.sendHeader("Set-Cookie", "ESPSESSIONID=0");
   server.sendHeader("Location", "/login");
-  server.sendHeader("Cache-Control", "no-cache");
   server.send(301);
-  Serial.println("Signout ");
+  Serial.println("Signout (JWT)");
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
