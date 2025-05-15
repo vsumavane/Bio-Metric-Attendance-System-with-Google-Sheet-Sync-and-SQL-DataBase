@@ -10,6 +10,7 @@
 
 # Environment variables
 .env
+secrets.h
 
 # Logs
 *.log
