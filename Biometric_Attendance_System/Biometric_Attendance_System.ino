@@ -17,6 +17,7 @@
 #include "config/robotbold10.h"
 #include "config/seg.h"
 #include "config/icons.h"
+#include "config/secrets.h" // Create this file to store your secrets
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "mbedtls/base64.h"
@@ -106,9 +107,6 @@ uint8_t deleteFingerprint();
 uint8_t getFingerprintEnroll();
 void connectwifi();
 void offlinedataupload();
-
-// Secret key for JWT signature (keep this safe!)
-const char* JWT_SECRET = "your-very-secret-key";
 
 String web_content = "";
 
