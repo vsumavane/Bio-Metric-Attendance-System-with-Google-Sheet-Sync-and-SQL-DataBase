@@ -15,7 +15,7 @@ function renderDashboard() {
       <!-- Left Section: Logo and Title -->
       <div class="flex items-center space-x-3 flex-grow md:flex-grow-0">
         <img src="${logoIcon}" alt="Logo" class="h-10 w-10" />
-        <h1 class="text-xl sm:text-2xl font-bold text-blue-600 dark:text-white" style="font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;">BioGlyph</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-blue-600 dark:text-white" style="font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;"><span class="hidden sm:inline">BioGlyph</span> Dashboard </h1>
       </div>
 
       <!-- Center Section: Theme Toggle and Mobile Menu Button -->
