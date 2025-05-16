@@ -3,20 +3,19 @@ import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
 import { showModal } from '../components/Modal';
 import { getThemeToggleButtonHTML } from '../utils/theme';
+import logoIcon from '../assets/Logo.png';
 
 function renderDashboard() {
     return `
-        <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+        <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200" style="font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;">
             <!-- Header -->
             <header class="bg-white dark:bg-gray-800 shadow transition-colors duration-300">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex flex-wrap md:flex-nowrap justify-between items-center py-4 gap-4">
       <!-- Left Section: Logo and Title -->
       <div class="flex items-center space-x-3 flex-grow md:flex-grow-0">
-        <div class="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-          <span class="text-gray-500 dark:text-gray-300 font-bold text-base">BG</span>
-        </div>
-        <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">BioGlyph Admin Panel</h1>
+        <img src="${logoIcon}" alt="Logo" class="h-10 w-10" />
+        <h1 class="text-xl sm:text-2xl font-bold text-blue-600 dark:text-white" style="font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;">BioGlyph</h1>
       </div>
 
       <!-- Center Section: Theme Toggle and Mobile Menu Button -->

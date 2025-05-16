@@ -3,15 +3,15 @@ import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
 import { showModal } from '../components/Modal';
 import { initTheme } from '../utils/theme';
+import logo from '../assets/LogoFullTransparent.png';
 
 function renderLoginForm() {
     return `
         <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-6 px-2 sm:py-12 sm:px-6 lg:px-8">
             <div class="max-w-md w-full space-y-6 sm:space-y-8 bg-white dark:bg-gray-900 p-6 sm:p-10 rounded-xl shadow-lg mx-2">
                 <div class="text-center">
-                    <div class="mx-auto h-16 w-16 sm:h-20 sm:w-20 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 sm:mb-6">
-                        <!-- Logo placeholder -->
-                        <span class="text-gray-400 dark:text-gray-300 text-xs sm:text-sm">LOGO</span>
+                    <div class="mb-4 sm:mb-6">
+                        <img src="${logo}" alt="Logo" class="mx-auto h-16 sm:h-20 w-auto object-contain" />
                     </div>
                     <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
                         Welcome Back
