@@ -66,6 +66,7 @@ jobs:
           #endif
           EOF
 
-      - name: Compile Sketch
+      - name: Compile the sketch
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32 Biometric_Attendance_System/Biometric_Attendance_System.ino
+          arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app Biometric_Attendance_System/Biometric_Attendance_System.ino
+
