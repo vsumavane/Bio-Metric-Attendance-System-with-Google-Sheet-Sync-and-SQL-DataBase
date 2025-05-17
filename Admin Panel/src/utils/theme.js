@@ -8,7 +8,7 @@ function getSystemPreference() {
 
 // Get stored theme or system preference
 export function getTheme() {
-    return localStorage.getItem(THEME_KEY) || getSystemPreference();
+    return sessionStorage.getItem(THEME_KEY) || getSystemPreference();
 }
 
 // Set theme
@@ -23,7 +23,7 @@ export function initTheme() {
     
     // Listen for system preference changes
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!localStorage.getItem(THEME_KEY)) {
+        if (!sessionStorage.getItem(THEME_KEY)) {
             setTheme(e.matches ? 'dark' : 'light');
         }
     });
@@ -33,9 +33,9 @@ export function initTheme() {
 export function toggleTheme() {
     const currentTheme = getTheme();
     if (currentTheme === 'dark') {
-        localStorage.setItem(THEME_KEY, 'light');
+        sessionStorage.setItem(THEME_KEY, 'light');
     } else {
-        localStorage.setItem(THEME_KEY, 'dark');
+        sessionStorage.setItem(THEME_KEY, 'dark');
     }
     setTheme(currentTheme === 'dark' ? 'light' : 'dark');
 
