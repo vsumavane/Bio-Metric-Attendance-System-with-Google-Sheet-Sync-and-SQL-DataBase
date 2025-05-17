@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  frontend:
+    name: Build Admin Panel
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: Admin Panel
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+
+  arduino:
+    name: Compile Arduino Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Arduino CLI
+        uses: arduino/setup-arduino-cli@v1
+        with:
+          version: 0.34.0
+
+      - name: Install ESP32 Core
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install required libraries
+        run: |
+          arduino-cli lib install "ArduinoJson"
+
+      - name: Create config/secrets.h
+        run: |
+          mkdir -p Biometric_Attendance_System/config
+          cat << 'EOF' > Biometric_Attendance_System/config/secrets.h
+          #ifndef SECRETS_H
+          #define SECRETS_H
+
+          #define JWT_SECRET "your-256-very-secret-key"
+
+          #endif
+          EOF
+
+      - name: Compile the sketch
+        run: |
+          arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app Biometric_Attendance_System/Biometric_Attendance_System.ino
+

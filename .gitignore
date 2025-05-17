@@ -1,0 +1,24 @@
+# macOS system files
+.DS_Store
+
+# VSCode
+.vscode/
+
+# SQLite database files
+*.sqlite3
+*.db
+
+# Environment variables
+.env
+secrets.h
+
+# Logs
+*.log
+
+# Node.js
+node_modules/
+
+# Backup files
+*~
+*.bak
+*.swp
