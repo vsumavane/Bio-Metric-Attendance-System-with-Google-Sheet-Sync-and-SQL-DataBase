@@ -1,9 +1,9 @@
-import { saveToken } from '../utils/auth';
 import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
 import { showModal } from '../components/Modal';
 import { initTheme } from '../utils/theme';
 import logo from '../assets/LogoFullTransparent.png';
+import { getToken, isTokenFormatValid, isTokenExpired, TOKEN_KEY } from '../utils/auth';
 
 function renderLoginForm() {
     return `
@@ -74,30 +74,49 @@ function attachLoginHandler() {
     
     if (!form) return;
 
+    const token = getToken(TOKEN_KEY);
+
+    if (token && isTokenFormatValid(token)) {
+        if (isTokenExpired(token)) {
+            showModal('error', 'Session expired. Please log in again.');
+            return;
+        } else {
+            navigateTo('/dashboard');
+            return;
+        }
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = form.USERNAME.value.trim();
         const password = form.PASSWORD.value.trim();
-        
+
         // Disable button and show loading state
         loginButton.disabled = true;
         loginButton.textContent = 'Logging in...';
 
         try {
-            const response = await apiFetch('/login', {
-                method: 'POST',
-                body: JSON.stringify({ username, password }),
-                headers: { 'Content-Type': 'application/json' }
+            const formData = new URLSearchParams();
+            formData.append('USERNAME', username);
+            formData.append('PASSWORD', password);
+
+            const response = await apiFetch('/api/login', {
+            method: 'POST',
+            body: formData.toString(),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
             });
 
-            if (!response.ok) {
-                const { message } = await response.json();
-                throw new Error(message || 'Login failed');
+            if (response.redirected) {
+            navigateTo(response.redirected);
+            return;
             }
 
-            const { token } = await response.json();
-            saveToken(token);
-            navigateTo('/dashboard');
+            const text = await response.text();
+            if (text.includes('Wrong username/password')) {
+            showModal('error', 'Wrong username or password! Try again.');
+            } else {
+            showModal('error', 'Login failed. Please try again.');
+            }
         } catch (err) {
             showModal('error', err.message);
         } finally {
