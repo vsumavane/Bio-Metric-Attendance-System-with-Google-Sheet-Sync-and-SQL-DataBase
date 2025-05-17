@@ -109,11 +109,41 @@ void offlinedataupload();
 
 String web_content = "";
 
+// helper functions for logging
+void logInfo(const char* message) {
+  Serial.print("[INFO][");
+  Serial.print(millis());
+  Serial.print("ms] ");
+  Serial.println(message);
+}
+
+void logError(const char* message) {
+  Serial.print("[ERROR][");
+  Serial.print(millis());
+  Serial.print("ms] ");
+  Serial.println(message);
+}
+
+void logDebug(const char* message) {
+  Serial.print("[DEBUG][");
+  Serial.print(millis());
+  Serial.print("ms] ");
+  Serial.println(message);
+}
+
+void logWarning(const char* message) {
+  Serial.print("[WARN][");
+  Serial.print(millis());
+  Serial.print("ms] ");
+  Serial.println(message);
+}
 
 void setup() {
   booting = true;
   pinMode (Buzzer, OUTPUT);
   Serial.begin(115200);
+  logInfo("Starting Biometric Attendance System...");
+  
   mySerial.begin(57600, SERIAL_8N1, 16, 17);
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
@@ -121,14 +151,10 @@ void setup() {
   display.display();
   delay(1000);
   display.clearDisplay();
-  if (finger.verifyPassword())
-  {
-    Serial.println("Fingerprint Sensor Connected");
-
-  }
-
-  else
-  {
+  
+  if (finger.verifyPassword()) {
+    logInfo("Fingerprint Sensor Connected Successfully");
+  } else {
     display.clearDisplay();
     display.setTextSize(2);             // Normal 1:1 pixel scale
     display.setTextColor(SSD1306_WHITE);        // Draw white text
@@ -138,79 +164,78 @@ void setup() {
     display.println("Error");
     display.display();
 
-    Serial.println("Unable to find Sensor");
+    logError("Unable to find Sensor");
     delay(3000);
-    Serial.println("Check Connections");
+    logError("Check Connections");
 
     while (1) {
       delay(1);
     }
   }
+  
   display.clearDisplay();
   rtc.begin();
   SPIFFS.begin(); // For SPIFFS
+  logInfo("SPIFFS initialized");
 
   // Load values saved in SPIFFS
   ssid_ = readFile(SPIFFS, ssidPath);
-  Serial.println(ssid_);
+  logDebug("Loaded SSID from SPIFFS");
   pass_ = readFile(SPIFFS, passPath);
-  Serial.println(pass_);
+  logDebug("Loaded WiFi password from SPIFFS");
   ip_ = readFile(SPIFFS, ipPath);
-  Serial.println(ip_);
+  logDebug("Loaded IP from SPIFFS");
   gateway_ = readFile(SPIFFS, gatewayPath);
-  Serial.println(gateway_);
+  logDebug("Loaded Gateway from SPIFFS");
   dispname_ = readFile(SPIFFS, dispnamePath);
-  if (dispname_ == "")
-  {
+  if (dispname_ == "") {
     dispname_ = DEFAULT_displayname;
   }
-  Serial.println(dispname_);
+  logDebug("Loaded display name from SPIFFS");
   wwwid_ = readFile(SPIFFS, wwwidPath);
-  if (wwwid_ == "")
-  {
+  if (wwwid_ == "") {
     wwwid_ = DEFAULT_wwwusername;
   }
-  Serial.println(wwwid_);
+  logDebug("Loaded web username from SPIFFS");
   wwwpass_ = readFile(SPIFFS, wwwpassPath);
-  if (wwwpass_ == "")
-  {
+  if (wwwpass_ == "") {
     wwwpass_ = DEFAULT_wwwpassword;
   }
-  Serial.println(wwwpass_);
+  logDebug("Loaded web password from SPIFFS");
   gsid_ = readFile(SPIFFS, gsidPath);
-  Serial.println(gsid_);
+  logDebug("Loaded Google Sheet ID from SPIFFS");
   mdnsdotlocalurl = readFile(SPIFFS, mdnsPath);
-  Serial.println(mdnsdotlocalurl);
+  logDebug("Loaded mDNS URL from SPIFFS");
   dhcpcheck = readFile(SPIFFS, dhcpcheckPath);
-  Serial.println(dhcpcheck);
+  logDebug("Loaded DHCP check from SPIFFS");
 
   display.drawBitmap(32, 0, logo_wifi, 64, 61, 1);
   display.display();
   display.clearDisplay();
 
   connectwifi();
-  if (mdnsdotlocalurl == "")
-  {
+  if (mdnsdotlocalurl == "") {
     mdnsdotlocalurl = DEFAULT_mdns;
   }
 
   if (!MDNS.begin(mdnsdotlocalurl.c_str())) {
-    Serial.println("Error setting up MDNS responder!");
+    logError("Error setting up MDNS responder!");
+  } else {
+    logInfo("MDNS responder started");
   }
 
   MDNS.addService("http", "tcp", 80);
+  logInfo("HTTP service added to MDNS");
 
   Serial.print("http://");
   Serial.print(mdnsdotlocalurl);
   Serial.println(".local");
 
-
   auto requireAuth = [](std::function<void()> handler) {
       return [handler]() {
         if (!is_authenticated()) {
-          server.sendHeader("Location", "/login");
           server.sendHeader("Cache-Control", "no-cache");
-          server.send(301);
+          server.send(401);
           return;
         }
         handler();
@@ -564,41 +589,40 @@ bool is_authenticated() {
 void handleLogin() {
   String msg;
   if (server.hasHeader("Cookie")) {
-    Serial.print("Found cookie: ");
+    logDebug("Found cookie in request");
     String cookie = server.header("Cookie");
-    Serial.println(cookie);
+    logDebug(cookie.c_str());
   }
   if (server.hasArg("DISCONNECT")) {
-    Serial.println("Disconnection");
-    server.sendHeader("Location", "/login");
+    logInfo("User disconnected");
     server.sendHeader("Cache-Control", "no-cache");
     server.sendHeader("Set-Cookie", "auth_token=; Max-Age=0; Path=/");
-    server.send(301);
+    server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Logged out successfully\"}");
     return;
   }
   if (server.hasArg("USERNAME") && server.hasArg("PASSWORD")) {
-    Serial.println(server.hasArg("USERNAME"));
-    Serial.println(server.hasArg("PASSWORD"));
+    logDebug("Login attempt received");
     if (server.arg("USERNAME") == wwwid_ && server.arg("PASSWORD") == wwwpass_) {
       String jwt = createJWT(server.arg("USERNAME"));
-      String cookie = "auth_token=" + jwt + "; Path=/; HttpOnly";
+      String cookie = "auth_token=" + jwt + "; Path=/; HttpOnly; SameSite=Strict";
       server.sendHeader("Set-Cookie", cookie);
-      server.sendHeader("Location", "/");
       server.sendHeader("Cache-Control", "no-cache");
-      server.send(301);
-      Serial.println("Log in Successful (JWT)");
+      server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Login successful\"}");
+      logInfo("User logged in successfully");
       return;
     }
-    msg = "Wrong username/password! try again.";
-    Serial.println("Log in Failed");
+    logWarning("Failed login attempt - invalid credentials");
+    server.send(401, "application/json", "{\"status\":\"error\",\"message\":\"Invalid username or password\"}");
+    return;
   }
+  logWarning("Login attempt with missing credentials");
+  server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing username or password\"}");
 }
 /*--------------------------------------------------------*/
 void logout() {
-  server.sendHeader("Set-Cookie", "auth_token=; Max-Age=0; Path=/");
+  server.sendHeader("Set-Cookie", "auth_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict");
   server.sendHeader("Cache-Control", "no-cache");
-  server.sendHeader("Location", "/login");
-  server.send(301);
+  server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Logged out successfully\"}");
   Serial.println("Signout (JWT)");
 }
 /*--------------------------------------------------------*/
@@ -607,27 +631,24 @@ void handleRoot() {
 }
 
 void handleNotFound() {
-
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server.uri();
-  message += "\nMethod: ";
-  message += ( server.method() == HTTP_GET ) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server.args();
-  message += "\n";
-
-  for ( uint8_t i = 0; i < server.args(); i++ ) {
-    message += " " + server.argName ( i ) + ": " + server.arg ( i ) + "\n";
+  String message = "{\"status\":\"error\",\"message\":\"Not Found\",\"details\":{";
+  message += "\"uri\":\"" + server.uri() + "\",";
+  message += "\"method\":\"" + (server.method() == HTTP_GET ? "GET" : "POST") + "\",";
+  message += "\"arguments\":" + String(server.args()) + ",";
+  message += "\"params\":{";
+  
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += "\"" + server.argName(i) + "\":\"" + server.arg(i) + "\"";
+    if (i < server.args() - 1) message += ",";
   }
-
-  server.send ( 404, "text/plain", message );
-
+  message += "}}";
+  
+  server.send(404, "application/json", message);
 }
 
 /*--------------------------------------------------------*/
 void insertRecord() {
-  web_content = "";
+  logInfo("New record insertion request received");
   String sql = "";
   String eemployee_id = server.arg("memployee_id");
   String ename = server.arg("mname");
@@ -635,33 +656,37 @@ void insertRecord() {
   String epos = server.arg("mpos");
   String efpid = server.arg("mfpid");
 
-  id = efpid.toInt();
+  // Validate required fields
+  if (eemployee_id == "" || ename == "" || eemail_id == "" || epos == "" || efpid == "") {
+    logWarning("Record insertion failed - missing required fields");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing required fields\"}");
+    return;
+  }
 
-  if (getFingerprintEnroll() == true)
-  {
+  id = efpid.toInt();
+  logDebug("Starting fingerprint enrollment process");
+
+  if (getFingerprintEnroll() == true) {
     sql = "insert into attendance(id,eid,employee_name,employee_email,position,fpid) values(" + efpid + ",'" + eemployee_id + "','" + ename + "','" + eemail_id + "','" + epos + "'," + efpid + ")";
-    Serial.println(sql);
+    logDebug("Executing SQL: " + sql);
+    
     if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
-      web_content += "OK";
-      Serial.println(web_content);
       display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
+      display.setTextColor(SSD1306_WHITE);
       display.drawBitmap(47, 0, ok_bmp, 35, 45, 1);
-      //display.setCursor(0, 60);            // Start at top-left corner
-      //display.println(("Enroll Success"));
       oledDisplayCenter("Enroll Success!!", 0, 60);
       display.display();
       delay(2000);
+      logInfo("Employee enrolled successfully");
+      server.send(201, "application/json", "{\"status\":\"success\",\"message\":\"Employee enrolled successfully\"}");
+    } else {
+      logError("Database error during employee enrollment");
+      server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Database error\"}");
     }
-    else {
-      web_content += "FAIL";
-    }
+  } else {
+    logError("Fingerprint enrollment failed");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Fingerprint enrollment failed\"}");
   }
-  else {
-    web_content += "FAIL";
-  }
-
-  server.send (200, "text/html", web_content );
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
@@ -831,38 +856,45 @@ void save() {
     Serial.println();
   }
   web_content += "OK";
-                 server.send (200, "text/html", web_content );
+                 server.send (201, "text/html", web_content );
                  ESP.restart();
 
 }
 /*--------------------------------------------------------*/
 void deleteRecord() {
-  web_content = "";
-  String sql = "";
   String id = server.arg("id");
-  int dfpid = id.toInt();
-  sql = "delete from attendance where id=" + id;
-  Serial.println(sql);
-  if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
-    web_content += "OK";
-    Serial.println(web_content);
-    deleteFingerprint(dfpid);
+  logInfo("Delete record request received for ID: " + id);
+  
+  if (id == "") {
+    logWarning("Delete request failed - missing employee ID");
+    server.send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing employee ID\"}");
+    return;
   }
-  else
-    web_content += "FAIL";
-  server.send (200, "text/html", web_content );
+
+  int dfpid = id.toInt();
+  String sql = "delete from attendance where id=" + id;
+  logDebug("Executing SQL: " + sql);
+  
+  if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
+    deleteFingerprint(dfpid);
+    logInfo("Employee deleted successfully");
+    server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Employee deleted successfully\"}");
+  } else {
+    logError("Failed to delete employee");
+    server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to delete employee\"}");
+  }
 }
 /*--------------------------------------------------------*/
 void showRecords() {
   web_content = "<table style='width:90%; margin-left:5%'><tr><th>Sl.No</th><th>Empl.ID</th><th>Employee Name</th><th>Employee Email</th><th>Position</th><th>FID</th><th>DEL</th></tr>";
   String sql = "Select * from attendance";
+  
   if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
     web_content += "</table>";
+    server.send(200, "text/html", web_content);
+  } else {
+    server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to fetch records\"}");
   }
-  else
-    web_content = "FAIL";
-  server.send (200, "text/html", web_content );
-
 }
 
 
@@ -890,31 +922,22 @@ void newRecordTable() {
 
 /*--------------------------------------------------------*/
 void getssid() {
-
-  server.send(200, "text/plane", ssid_);
-
+  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + ssid_ + "\"}");
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
 void getmdns() {
-
-  server.send(200, "text/plane", mdnsdotlocalurl);
-
+  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + mdnsdotlocalurl + "\"}");
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
 void getip() {
-
-  server.send(200, "text/plane", ip_);
-
+  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + ip_ + "\"}");
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
 void getfpid() {
-
-
-  server.send(200, "text/plane", Sqid);
-
+  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + Sqid + "\"}");
 }
 /*--------------------------------------------------------*/
 // returns -1 if failed, otherwise returns ID #
