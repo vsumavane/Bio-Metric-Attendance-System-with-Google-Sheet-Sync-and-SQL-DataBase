@@ -137,3 +137,99 @@ export function showModal(type, message, duration = 3000) {
         });
     }
 }
+
+export function showConfirmModal(message, confirmText = 'Confirm', cancelText = 'Cancel') {
+    return new Promise((resolve) => {
+        // Remove any existing modal
+        const existingModal = document.getElementById('modal-container');
+        if (existingModal) {
+            if(existingModal._timeoutId) {
+                clearTimeout(existingModal._timeoutId);
+            }
+            existingModal.remove();
+        }
+
+        // Create modal container
+        const modalContainer = document.createElement('div');
+        modalContainer.id = 'modal-container';
+        modalContainer.className = 'fixed z-50';
+        modalContainer.setAttribute('aria-labelledby', 'modal-title');
+        modalContainer.setAttribute('role', 'dialog');
+        modalContainer.setAttribute('aria-modal', 'true');
+        modalContainer.style.right = '1.5rem';
+        modalContainer.style.bottom = '1.5rem';
+        modalContainer.style.top = 'auto';
+        modalContainer.style.left = 'auto';
+
+        // Create modal content
+        const modalContent = `
+            <div class="fixed inset-0 flex items-center justify-center z-50 bg-black/30 dark:bg-black/50">
+                <div class="relative transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl transition-all w-full max-w-xs sm:max-w-sm p-4 sm:p-5 dark:shadow-gray-900/50 scale-95 opacity-0"
+                     style="min-width:0;">
+                    <div class="flex items-start gap-2 sm:gap-3">
+                        <div class="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800">
+                            <svg class="h-6 w-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-base sm:text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100 mb-0.5 sm:mb-1" id="modal-title">
+                                Confirm Action
+                            </h3>
+                            <div>
+                                <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 break-words mb-4">
+                                    ${message}
+                                </p>
+                                <div class="flex gap-2 justify-end">
+                                    <button type="button" 
+                                        id="modal-cancel-btn"
+                                        class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 dark:focus:ring-gray-600 transition">
+                                        ${cancelText}
+                                    </button>
+                                    <button type="button" 
+                                        id="modal-confirm-btn"
+                                        class="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                                        ${confirmText}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add modal content to container
+        modalContainer.innerHTML = modalContent;
+
+        // Add modal to document
+        document.body.appendChild(modalContainer);
+
+        // Animation: zoom and fade in only (no slide)
+        const modal = modalContainer.querySelector('.transform');
+        modal.style.opacity = '0';
+        modal.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            modal.style.transition = 'all 0.3s cubic-bezier(0.4,0,0.2,1)';
+            modal.style.opacity = '1';
+            modal.style.transform = 'scale(1)';
+        }, 10);
+
+        // Button handlers
+        const confirmBtn = modalContainer.querySelector('#modal-confirm-btn');
+        const cancelBtn = modalContainer.querySelector('#modal-cancel-btn');
+
+        const closeModal = (result) => {
+            const modalElement = modalContainer.querySelector('.transform');
+            modalElement.style.opacity = '0';
+            modalElement.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                modalContainer.remove();
+                resolve(result);
+            }, 300);
+        };
+
+        confirmBtn.addEventListener('click', () => closeModal(true));
+        cancelBtn.addEventListener('click', () => closeModal(false));
+    });
+}
