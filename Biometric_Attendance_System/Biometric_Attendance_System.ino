@@ -451,25 +451,24 @@ bool loadFromSPIFFS(String path) {
 
   Serial.print("Requested page -> ");
   Serial.println(path);
+
   if (SPIFFS.exists(path)) {
     File dataFile = SPIFFS.open(path, "r");
     if (!dataFile) {
       handleNotFound();
       return false;
     }
-
+    server.sendHeader("Content-Encoding", "gzip");
     if (server.streamFile(dataFile, dataType) != dataFile.size()) {
       Serial.println("Sent less data than expected!");
     } else {
-      Serial.println("Page served!");
+      Serial.println("Gzipped page served!");
     }
-
     dataFile.close();
-  } else {
-    handleNotFound();
-    return false;
+    return true;
   }
-  return true;
+  handleNotFound();
+  return false;
 }
 
 // Base64URL encode helper
@@ -627,7 +626,7 @@ void logout() {
 }
 /*--------------------------------------------------------*/
 void handleRoot() {
-  loadFromSPIFFS("/index.html");
+  loadFromSPIFFS("/index.html.gz");
 }
 
 void handleNotFound() {
