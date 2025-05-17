@@ -2,7 +2,7 @@
 
 import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
-import { showModal } from '../components/Modal';
+import { showConfirmModal, showModal } from '../components/Modal';
 import { getThemeToggleButtonHTML } from '../utils/theme';
 
 function renderEnrollForm() {
@@ -95,10 +95,10 @@ function renderEnrollForm() {
 
 async function pollFingerprintId() {
     try {
-        const response = await apiFetch('/getfpid');
+        const response = await apiFetch('/api/getfpid');
         if (!response.ok) throw new Error('Failed to get fingerprint ID');
         
-        const { fpid } = await response.json();
+        const fpid = await response.text();
         if (fpid) {
             document.getElementById('fpid').value = fpid;
         }
@@ -127,7 +127,8 @@ function attachEnrollHandlers() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        if (!confirm('Are you sure you want to enroll this employee? The page will automatically redirect when the process is complete.')) {
+        const confirmed = await showConfirmModal('Are you sure you want to enroll this employee? The page will automatically redirect when the process is complete.');
+        if (!confirmed) {
             return;
         }
 
@@ -136,18 +137,18 @@ function attachEnrollHandlers() {
         submitBtn.textContent = 'Enrolling...';
 
         try {
-            const formData = {
-                employee_id: form.employee_id.value.trim(),
-                name: form.name.value.trim(),
-                email: form.email.value.trim(),
-                position: form.position.value.trim(),
-                fpid: form.fpid.value.trim()
-            };
+            const formData = new URLSearchParams({
+                memployee_id: form.employee_id.value.trim(),
+                mname: form.name.value.trim(),
+                memail_id: form.email.value.trim(),
+                mpos: form.position.value.trim(),
+                mfpid: form.fpid.value.trim()
+            });
 
-            const response = await apiFetch('/insert', {
+            const response = await apiFetch('/api/insert', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString()
             });
 
             if (!response.ok) throw new Error('Failed to enroll employee');
