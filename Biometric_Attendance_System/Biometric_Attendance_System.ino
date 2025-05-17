@@ -648,8 +648,8 @@ void insertRecord() {
       display.setTextColor(SSD1306_WHITE);        // Draw white text
       display.drawBitmap(47, 0, ok_bmp, 35, 45, 1);
       //display.setCursor(0, 60);            // Start at top-left corner
-      //display.println(("Enroll Sucess"));
-      oledDisplayCenter("Enroll Sucess!!", 0, 60);
+      //display.println(("Enroll Success"));
+      oledDisplayCenter("Enroll Success!!", 0, 60);
       display.display();
       delay(2000);
     }
@@ -693,7 +693,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk SSID");
+    Serial.println("Blank SSID");
   }
   if (_password != "")
   {
@@ -701,7 +701,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk WiFi Password");
+    Serial.println("Blank WiFi Password");
   }
   if (_mdns != "")
   {
@@ -709,7 +709,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk mdns");
+    Serial.println("Blank mdns");
   }
   if (_gsid != "")
   {
@@ -717,7 +717,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk GSID");
+    Serial.println("Blank GSID");
   }
   if (_aip != "")
   {
@@ -725,7 +725,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk IP config");
+    Serial.println("Blank IP config");
   }
   if (_mip != "")
   {
@@ -733,7 +733,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk Manual IP");
+    Serial.println("Blank Manual IP");
   }
   if (_gateway != "")
   {
@@ -741,7 +741,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk Gateway");
+    Serial.println("Blank Gateway");
   }
   if (_dispname != "")
   {
@@ -749,7 +749,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk Display Name");
+    Serial.println("Blank Display Name");
   }
   if (_wwwid != "")
   {
@@ -757,7 +757,7 @@ void save() {
   }
   else
   {
-    Serial.println("Balnk Web User ID");
+    Serial.println("Blank Web User ID");
   }
   if (_wwwpass != "")
   {
