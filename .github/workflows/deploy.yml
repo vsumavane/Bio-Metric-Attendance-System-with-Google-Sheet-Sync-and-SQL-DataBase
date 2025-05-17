@@ -50,6 +50,18 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
+      - name: Create config/secrets.h
+        run: |
+          mkdir -p Biometric_Attendance_System/config
+          cat << 'EOF' > Biometric_Attendance_System/config/secrets.h
+          #ifndef SECRETS_H
+          #define SECRETS_H
+
+          #define JWT_SECRET "your-256-very-secret-key"
+
+          #endif
+          EOF
+
       - name: Compile Sketch
         run: |
           arduino-cli compile --fqbn esp32:esp32:esp32 Biometric_Attendance_System/Biometric_Attendance_System.ino
