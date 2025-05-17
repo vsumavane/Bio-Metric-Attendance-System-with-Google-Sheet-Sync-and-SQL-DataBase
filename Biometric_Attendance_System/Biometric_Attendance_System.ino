@@ -91,7 +91,6 @@ bool is_authenticated();
 void handleLogin();
 void logout();
 void handleRoot();
-void Settings();
 void handleNotFound();
 void insertRecord();
 void save();
@@ -206,25 +205,32 @@ void setup() {
   Serial.println(".local");
 
 
+  auto requireAuth = [](std::function<void()> handler) {
+      return [handler]() {
+        if (!is_authenticated()) {
+          server.sendHeader("Location", "/login");
+          server.sendHeader("Cache-Control", "no-cache");
+          server.send(301);
+          return;
+        }
+        handler();
+      };
+    }; 
 
 
-
-  server.on("/", handleRoot);
-  server.onNotFound(handleNotFound);
-  server.on("/insert", insertRecord);
-  server.on("/delete", deleteRecord);
-  server.on("/show", showRecords);
-  server.on("/newRecordTable", newRecordTable);
-  server.on("/Settings", Settings);
-  server.on("/save", save);
-  server.on("/getssid", getssid);
-  server.on("/getfpid", getfpid);
-  server.on("/getmdns", getmdns);
-  server.on("/getip", getip);
-  server.on("/login", handleLogin);
-  server.on("/signout", logout);
-
-
+server.on("/", HTTP_GET, handleRoot);
+server.onNotFound(handleNotFound);
+server.on("/api/insert", HTTP_POST, requireAuth(insertRecord));      // Create new record
+server.on("/api/delete", HTTP_DELETE, requireAuth(deleteRecord));    // Delete record
+server.on("/api/show", HTTP_GET, requireAuth(showRecords));          // Show all records
+server.on("/api/newRecordTable", HTTP_GET, requireAuth(newRecordTable)); // Get latest record info
+server.on("/api/save", HTTP_POST, requireAuth(save));                // Save settings
+server.on("/api/getssid", HTTP_GET, requireAuth(getssid));
+server.on("/api/getfpid", HTTP_GET, requireAuth(getfpid));
+server.on("/api/getmdns", HTTP_GET, requireAuth(getmdns));
+server.on("/api/getip", HTTP_GET, requireAuth(getip));
+server.on("/api/login", HTTP_POST, handleLogin);                     // Login (POST for credentials)
+server.on("/api/signout", HTTP_POST, logout);                        // Logout
 
   //here the list of headers to be recorded
   const char * headerkeys[] = {"User-Agent", "Cookie"} ;
@@ -586,7 +592,6 @@ void handleLogin() {
     msg = "Wrong username/password! try again.";
     Serial.println("Log in Failed");
   }
-  loadFromSPIFFS("/Login.html");
 }
 /*--------------------------------------------------------*/
 void logout() {
@@ -597,31 +602,9 @@ void logout() {
   Serial.println("Signout (JWT)");
 }
 /*--------------------------------------------------------*/
-/*--------------------------------------------------------*/
 void handleRoot() {
-  if (!is_authenticated()) {
-    server.sendHeader("Location", "/login");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
-    return;
-  }
-  loadFromSPIFFS("/db.html");
+  loadFromSPIFFS("/index.html");
 }
-/*--------------------------------------------------------*/
-/*--------------------------------------------------------*/
-void Settings() {
-  if (!is_authenticated()) {
-    server.sendHeader("Location", "/login");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
-    return;
-  }
-  //server.send(200, "text/html", web_page);
-  loadFromSPIFFS("/Settings.html");
-
-}
-/*--------------------------------------------------------*/
-
 
 void handleNotFound() {
 
@@ -871,12 +854,6 @@ void deleteRecord() {
 }
 /*--------------------------------------------------------*/
 void showRecords() {
-  if (!is_authenticated()) {
-    server.sendHeader("Location", "/login");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
-    return;
-  }
   web_content = "<table style='width:90%; margin-left:5%'><tr><th>Sl.No</th><th>Empl.ID</th><th>Employee Name</th><th>Employee Email</th><th>Position</th><th>FID</th><th>DEL</th></tr>";
   String sql = "Select * from attendance";
   if (db_exec(test1_db, sql.c_str()) == SQLITE_OK) {
@@ -891,12 +868,6 @@ void showRecords() {
 
 /*--------------------------------------------------------*/
 void newRecordTable() {
-  if (!is_authenticated()) {
-    server.sendHeader("Location", "/login");
-    server.sendHeader("Cache-Control", "no-cache");
-    server.send(301);
-    return;
-  }
   String sql = "";
   Sqid = "NULL";
   sql = "SELECT * FROM attendance ORDER BY id DESC LIMIT 1";
@@ -913,8 +884,6 @@ void newRecordTable() {
     qid = qid + 1;
     Sqid = String(qid);
   }
-  loadFromSPIFFS("/Enroll.html");
-
 }
 /*--------------------------------------------------------*/
 
