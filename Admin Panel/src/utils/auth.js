@@ -1,51 +1,52 @@
-const TOKEN_KEY = 'jwt';
+import { apiFetch } from "./api";
 
-/**
- * Save JWT to session storage
- * @param {string} token
- */
-export function saveToken(token) {
-  sessionStorage.setItem(TOKEN_KEY, token);
-}
+export const TOKEN_KEY = 'auth_token';
 
-/**
- * Retrieve JWT from session storage
- * @returns {string|null}
- */
-export function getToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
-}
-
-/**
- * Clear the stored JWT (logout)
- */
 export function clearToken() {
-  sessionStorage.removeItem(TOKEN_KEY);
+  apiFetch('/api/signout', {
+    method: 'POST',
+  })
 }
-
+  
 /**
  * Check if user is authenticated
  * @returns {boolean}
  */
 export function isAuthenticated() {
-  const token = getToken();
-  return token && isTokenValid();
+  const token = getToken(TOKEN_KEY);
+  return token && isTokenValid(token);
 }
 
-/**
- * Optional: Decode JWT and check expiry (basic example)
- * @returns {boolean}
- */
-export function isTokenValid() {
-  const token = getToken();
-  if (!token) return false;
+// Helper to get cookie by name
+export function getToken(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
 
+export function isTokenValid(token) {
+  return isTokenFormatValid(token) && !isTokenExpired(token);
+}
+
+export function isTokenFormatValid(token) {
+  if (!token) return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    return typeof payload === 'object' && payload !== null && 'exp' in payload;
+  } catch (err) {
+    return false;
+  }
+}
+
+export function isTokenExpired(token) {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     const now = Math.floor(Date.now() / 1000);
-    return payload.exp && payload.exp > now;
+    return !payload.exp || payload.exp <= now;
   } catch (err) {
-    console.error('Invalid token format', err);
-    return false;
+    return true;
   }
 }
