@@ -1,9 +1,9 @@
 // dashboard.js
-import { apiFetch } from "../utils/api";
-import { navigateTo } from "../utils/router";
-import { showModal } from "../components/Modal";
-import { getThemeToggleButtonHTML } from "../utils/theme";
-import logoIcon from "../assets/Logo.png";
+import { apiFetch } from '../utils/api';
+import { navigateTo } from '../utils/router';
+import { showModal } from '../components/Modal';
+import { getThemeToggleButtonHTML } from '../utils/theme';
+import logoIcon from '../assets/Logo.png';
 
 function renderDashboard() {
   return `
@@ -67,7 +67,7 @@ function renderDashboard() {
     </div>
 
     <!-- Mobile Dropdown Menu -->
-    <div class="md:hidden mt-3 space-y-2 hidden tran" id="dashboardMobileMenu">
+    <div class="md:hidden mt-3 space-y-2 hidden" id="dashboardMobileMenu">
       <button id="enrollBtnMobile"
         class="w-full inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition">
         <svg class="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,24 +207,22 @@ function renderDashboard() {
 }
 
 async function loadEmployeeData() {
-  const tableBody = document.getElementById("employeeTableBody");
-  const totalEmployees = document.getElementById("totalEmployees");
-  const activeToday = document.getElementById("activeToday");
-  const lastUpdated = document.getElementById("lastUpdated");
+    const tableBody = document.getElementById('employeeTableBody');
+    const totalEmployees = document.getElementById('totalEmployees');
+    const activeToday = document.getElementById('activeToday');
+    const lastUpdated = document.getElementById('lastUpdated');
 
   if (!tableBody) return;
 
   try {
-    const response = await apiFetch("/show");
-    if (!response.ok) throw new Error("Failed to load employee data");
+        const response = await apiFetch('/show');
+        if (!response.ok) throw new Error('Failed to load employee data');
 
     const employees = await response.json();
 
     // Update stats
     totalEmployees.textContent = employees.length;
-    activeToday.textContent = employees.filter(
-      (e) => e.last_active === new Date().toISOString().split("T")[0]
-    ).length;
+        activeToday.textContent = employees.filter(e => e.last_active === new Date().toISOString().split('T')[0]).length;
     lastUpdated.textContent = new Date().toLocaleTimeString();
 
     if (employees.length === 0) {
@@ -244,9 +242,7 @@ async function loadEmployeeData() {
     }
 
     // Render employee table
-    tableBody.innerHTML = employees
-      .map(
-        (employee) => `
+        tableBody.innerHTML = employees.map(employee => `
             <tr>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${employee.employee_id}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">${employee.name}</td>
@@ -262,49 +258,43 @@ async function loadEmployeeData() {
                     </button>
                 </td>
             </tr>
-        `
-      )
-      .join("");
+        `).join('');
   } catch (error) {
-    showModal("error", "Error loading employee data: " + error.message);
+        showModal('error', 'Error loading employee data: ' + error.message);
   }
 }
 
 async function deleteEmployee(employeeId) {
-  if (
-    !confirm(
-      "Are you sure you want to delete this employee? This action cannot be undone."
-    )
-  ) {
+    if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
     return;
   }
 
   try {
-    const response = await apiFetch("/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employee_id: employeeId }),
+        const response = await apiFetch('/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_id: employeeId })
     });
 
-    if (!response.ok) throw new Error("Failed to delete employee");
+        if (!response.ok) throw new Error('Failed to delete employee');
 
-    showModal("success", "Employee deleted successfully!");
+        showModal('success', 'Employee deleted successfully!');
     await loadEmployeeData();
   } catch (error) {
-    showModal("error", "Error deleting employee: " + error.message);
+        showModal('error', 'Error deleting employee: ' + error.message);
   }
 }
 
 function attachDashboardHandlers() {
   // Burger menu toggle logic
-  const menuBtn = document.getElementById("dashboardMenuBtn");
-  const mobileMenu = document.getElementById("dashboardMobileMenu");
+    const menuBtn = document.getElementById('dashboardMenuBtn');
+    const mobileMenu = document.getElementById('dashboardMobileMenu');
   if (menuBtn && mobileMenu) {
-    menuBtn.onclick = function () {
-      if (mobileMenu.style.display === "none" || !mobileMenu.style.display) {
-        mobileMenu.style.display = "block";
+        menuBtn.onclick = function() {
+            if (mobileMenu.style.display === 'none' || !mobileMenu.style.display) {
+                mobileMenu.style.display = 'block';
       } else {
-        mobileMenu.style.display = "none";
+                mobileMenu.style.display = 'none';
       }
     };
   }
@@ -319,47 +309,41 @@ function attachDashboardHandlers() {
     handleResize();
   }, 0);
   // Mobile menu button handlers
-  const enrollBtnMobile = document.getElementById("enrollBtnMobile");
-  const settingsBtnMobile = document.getElementById("settingsBtnMobile");
-  const signoutBtnMobile = document.getElementById("signoutBtnMobile");
-  if (enrollBtnMobile)
-    enrollBtnMobile.onclick = () =>
-      document.getElementById("enrollBtn")?.click();
-  if (settingsBtnMobile)
-    settingsBtnMobile.onclick = () =>
-      document.getElementById("settingsBtn")?.click();
-  if (signoutBtnMobile)
-    signoutBtnMobile.onclick = () =>
-      document.getElementById("signoutBtn")?.click();
+    const enrollBtnMobile = document.getElementById('enrollBtnMobile');
+    const settingsBtnMobile = document.getElementById('settingsBtnMobile');
+    const signoutBtnMobile = document.getElementById('signoutBtnMobile');
+    if (enrollBtnMobile) enrollBtnMobile.onclick = () => document.getElementById('enrollBtn')?.click();
+    if (settingsBtnMobile) settingsBtnMobile.onclick = () => document.getElementById('settingsBtn')?.click();
+    if (signoutBtnMobile) signoutBtnMobile.onclick = () => document.getElementById('signoutBtn')?.click();
 
   // Attach button handlers
-  document.getElementById("enrollBtn")?.addEventListener("click", () => {
-    navigateTo("/enroll");
+    document.getElementById('enrollBtn')?.addEventListener('click', () => {
+        navigateTo('/enroll');
   });
 
-  document.getElementById("settingsBtn")?.addEventListener("click", () => {
-    navigateTo("/settings");
+    document.getElementById('settingsBtn')?.addEventListener('click', () => {
+        navigateTo('/settings');
   });
 
-  document.getElementById("signoutBtn")?.addEventListener("click", async () => {
+    document.getElementById('signoutBtn')?.addEventListener('click', async () => {
     try {
-      await apiFetch("/signout", { method: "POST" });
-      navigateTo("/");
+            await apiFetch('/signout', { method: 'POST' });
+            navigateTo('/');
     } catch (error) {
-      showModal("error", "Error signing out: " + error.message);
+            showModal('error', 'Error signing out: ' + error.message);
     }
   });
 
   // Search functionality
-  const searchInput = document.getElementById("searchInput");
+    const searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.addEventListener("input", (e) => {
+        searchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase();
-      const rows = document.querySelectorAll("#employeeTableBody tr");
+            const rows = document.querySelectorAll('#employeeTableBody tr');
 
-      rows.forEach((row) => {
+            rows.forEach(row => {
         const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? "" : "none";
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
       });
     });
   }
