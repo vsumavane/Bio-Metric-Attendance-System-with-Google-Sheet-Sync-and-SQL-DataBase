@@ -543,7 +543,7 @@ bool is_authenticated() {
     String cookie = server.header("Cookie");
     Serial.print("Found cookie: ");
     Serial.println(cookie);
-    int idx = cookie.indexOf("JWT=");
+    int idx = cookie.indexOf("auth_token=");
     if (idx != -1) {
       int endIdx = cookie.indexOf(';', idx);
       String jwt = cookie.substring(idx + 4, endIdx == -1 ? cookie.length() : endIdx);
@@ -572,7 +572,7 @@ void handleLogin() {
     Serial.println("Disconnection");
     server.sendHeader("Location", "/login");
     server.sendHeader("Cache-Control", "no-cache");
-    server.sendHeader("Set-Cookie", "JWT=; Max-Age=0; Path=/");
+    server.sendHeader("Set-Cookie", "auth_token=; Max-Age=0; Path=/");
     server.send(301);
     return;
   }
@@ -581,7 +581,7 @@ void handleLogin() {
     Serial.println(server.hasArg("PASSWORD"));
     if (server.arg("USERNAME") == wwwid_ && server.arg("PASSWORD") == wwwpass_) {
       String jwt = createJWT(server.arg("USERNAME"));
-      String cookie = "JWT=" + jwt + "; Path=/; HttpOnly";
+      String cookie = "auth_token=" + jwt + "; Path=/; HttpOnly";
       server.sendHeader("Set-Cookie", cookie);
       server.sendHeader("Location", "/");
       server.sendHeader("Cache-Control", "no-cache");
@@ -595,7 +595,7 @@ void handleLogin() {
 }
 /*--------------------------------------------------------*/
 void logout() {
-  server.sendHeader("Set-Cookie", "JWT=; Max-Age=0; Path=/");
+  server.sendHeader("Set-Cookie", "auth_token=; Max-Age=0; Path=/");
   server.sendHeader("Cache-Control", "no-cache");
   server.sendHeader("Location", "/login");
   server.send(301);
