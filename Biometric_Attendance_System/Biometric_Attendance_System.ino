@@ -110,28 +110,28 @@ void offlinedataupload();
 String web_content = "";
 
 // helper functions for logging
-void logInfo(const char* message) {
+void logInfo(const String& message) {
   Serial.print("[INFO][");
   Serial.print(millis());
   Serial.print("ms] ");
   Serial.println(message);
 }
 
-void logError(const char* message) {
+void logError(const String& message) {
   Serial.print("[ERROR][");
   Serial.print(millis());
   Serial.print("ms] ");
   Serial.println(message);
 }
 
-void logDebug(const char* message) {
+void logDebug(const String& message) {
   Serial.print("[DEBUG][");
   Serial.print(millis());
   Serial.print("ms] ");
   Serial.println(message);
 }
 
-void logWarning(const char* message) {
+void logWarning(const String& message) {
   Serial.print("[WARN][");
   Serial.print(millis());
   Serial.print("ms] ");
@@ -632,7 +632,7 @@ void handleRoot() {
 void handleNotFound() {
   String message = "{\"status\":\"error\",\"message\":\"Not Found\",\"details\":{";
   message += "\"uri\":\"" + server.uri() + "\",";
-  message += "\"method\":\"" + (server.method() == HTTP_GET ? "GET" : "POST") + "\",";
+  message += "\"method\":\"" + String(server.method() == HTTP_GET ? "GET" : "POST") + "\",";
   message += "\"arguments\":" + String(server.args()) + ",";
   message += "\"params\":{";
   
