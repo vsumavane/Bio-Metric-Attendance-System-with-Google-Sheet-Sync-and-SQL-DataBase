@@ -52,4 +52,4 @@ jobs:
 
       - name: Compile Sketch
         run: |
-          arduino-cli compile --fqbn esp32:esp32:esp32 Dev/Biometric_Attendance_System/Biometric_Attendance_System.ino
+          arduino-cli compile --fqbn esp32:esp32:esp32 Biometric_Attendance_System/Biometric_Attendance_System.ino
