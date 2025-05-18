@@ -135,21 +135,31 @@ function renderSettings() {
     function renderField(field) {
         if (field.type === "select") {
             return `
-                <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
-                <select id="${field.id}" name="${field.id}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                    ${field.options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('')}
-                </select>
+                <div class="flex flex-col">
+                    <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
+                    <select 
+                        id="${field.id}" 
+                        name="${field.id}" 
+                        disabled
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        ${field.options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('')}
+                    </select>
+                </div>
             `;
         } else {
             return `
-                <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
-                <input 
-                    type="${field.type}" 
-                    id="${field.id}"
-                    name="${field.id}" 
-                    placeholder="${field.placeholder || ''}"
-                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                >
+                <div class="flex flex-col">
+                    <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
+                    <input 
+                        type="${field.type}" 
+                        id="${field.id}"
+                        name="${field.id}" 
+                        disabled
+                        placeholder="${field.placeholder || ''}"
+                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                </div>
             `;
         }
     }
@@ -205,13 +215,13 @@ function renderSettings() {
                     <div class="flex-1">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
                         <div class="flex flex-row gap-2 w-full">
-                            <select id="dtd" name="dtd" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="dtd" name="dtd" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${getDayOptions(currentDate.month, currentDate.year)}
                             </select>
-                            <select id="dtm" name="dtm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="dtm" name="dtm" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${months.map((m, i) => `<option value="${m.value}"${currentDate.month === m.value ? ' selected' : ''}>${m.text}</option>`).join('')}
                             </select>
-                            <select id="dty" name="dty" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="dty" name="dty" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${years.map(y => `<option value="${y}"${currentDate.year === y ? ' selected' : ''}>${y}</option>`).join('')}
                             </select>
                         </div>
@@ -219,25 +229,25 @@ function renderSettings() {
                     <div class="flex-1 mt-4 md:mt-0">
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
                         <div class="flex flex-row gap-2 w-full">
-                            <select id="tmh" name="tmh" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="tmh" name="tmh" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${Array.from({length: 12}, (_, i) => {
                                     const val = dateUtils.pad2(i + 1);
                                     return `<option value="${val}"${val === currentDate.hour ? ' selected' : ''}>${val}</option>`;
                                 }).join('')}
                             </select>
-                            <select id="tmm" name="tmm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="tmm" name="tmm" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${Array.from({length: 60}, (_, i) => {
                                     const val = dateUtils.pad2(i);
                                     return `<option value="${val}"${val === currentDate.minute ? ' selected' : ''}>${val}</option>`;
                                 }).join('')}
                             </select>
-                            <select id="tms" name="tms" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="tms" name="tms" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 ${Array.from({length: 60}, (_, i) => {
                                     const val = dateUtils.pad2(i);
                                     return `<option value="${val}"${val === currentDate.second ? ' selected' : ''}>${val}</option>`;
                                 }).join('')}
                             </select>
-                            <select id="tmapm" name="tmapm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                            <select id="tmapm" name="tmapm" disabled class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <option value="1"${currentDate.ampm === '1' ? ' selected' : ''}>AM</option>
                                 <option value="2"${currentDate.ampm === '2' ? ' selected' : ''}>PM</option>
                             </select>
@@ -263,10 +273,20 @@ function renderSettings() {
                             </svg>
                             <h1 class="ml-3 text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
                         </div>
-                        <!-- Right: Theme toggle (always visible) and Back button -->
+                        <!-- Right: Theme toggle and Edit mode toggle -->
                         <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 w-full sm:w-auto mt-4 sm:mt-0">
-                            <div class="absolute top-6 right-6 sm:static flex justify-end sm:justify-center w-full sm:w-auto">
+                            <div class="flex items-center space-x-4">
                                 ${getThemeToggleButtonHTML()}
+                                <button
+                                    type="button"
+                                    id="editModeToggle"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                >
+                                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                    Edit Mode
+                                </button>
                             </div>
                             <button 
                                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full sm:w-auto mt-4 sm:mt-0"
@@ -477,6 +497,39 @@ function attachSettingsHandlers() {
         document.getElementById('tms').value = currentDate.second;
         document.getElementById('tmapm').value = currentDate.ampm;
     });
+
+    // Add universal edit mode toggle handler
+    const editModeToggle = document.getElementById('editModeToggle');
+    let isEditMode = false;
+
+    editModeToggle.addEventListener('click', () => {
+        isEditMode = !isEditMode;
+        
+        // Toggle all input fields
+        document.querySelectorAll('input, select').forEach(field => {
+            field.disabled = !isEditMode;
+        });
+
+        // Update toggle button appearance
+        editModeToggle.classList.toggle('bg-blue-50', isEditMode);
+        editModeToggle.classList.toggle('text-blue-600', isEditMode);
+        editModeToggle.classList.toggle('border-blue-600', isEditMode);
+        
+        // Update button text and icon
+        editModeToggle.innerHTML = `
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isEditMode ? 'M5 13l4 4L19 7' : 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'}" />
+            </svg>
+            ${isEditMode ? 'Done Editing' : 'Edit Mode'}
+        `;
+
+        // Toggle save button visibility
+        const saveBtn = document.getElementById('saveBtn');
+        saveBtn.style.display = isEditMode ? 'inline-flex' : 'none';
+    });
+
+    // Initially hide save button
+    document.getElementById('saveBtn').style.display = 'none';
 
     attachDayOptionsHandler();
     loadSettings();
