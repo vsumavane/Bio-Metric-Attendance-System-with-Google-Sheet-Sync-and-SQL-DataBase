@@ -96,26 +96,25 @@ function attachLoginHandler() {
         loginButton.textContent = 'Logging in...';
 
         try {
-            const formData = new URLSearchParams();
-            formData.append('USERNAME', username);
-            formData.append('PASSWORD', password);
+            const params = new URLSearchParams();
+            params.append('USERNAME', username);
+            params.append('PASSWORD', password);
 
-            const response = await apiFetch('/api/login', {
-            method: 'POST',
-            body: formData.toString(),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            const response = await apiFetch(`/api/login?${params.toString()}`, {
+                method: 'POST', // or 'GET' if your backend expects GET
+                // No body, no Content-Type header
             });
 
             if (response.redirected) {
-            navigateTo(response.redirected);
-            return;
+                navigateTo(response.redirected);
+                return;
             }
 
             const text = await response.text();
             if (text.includes('Wrong username/password')) {
-            showModal('error', 'Wrong username or password! Try again.');
+                showModal('error', 'Wrong username or password! Try again.');
             } else {
-            showModal('error', 'Login failed. Please try again.');
+                showModal('error', 'Login failed. Please try again.');
             }
         } catch (err) {
             showModal('error', err.message);
