@@ -98,9 +98,9 @@ async function pollFingerprintId() {
         const response = await apiFetch('/api/getfpid');
         if (!response.ok) throw new Error('Failed to get fingerprint ID');
         
-        const fpid = await response.text();
-        if (fpid) {
-            document.getElementById('fpid').value = fpid;
+        const result = await response.json();
+        if (result.status === "success" && result.data) {
+            document.getElementById('fpid').value = result.data;
         }
     } catch (error) {
         console.error('Error polling fingerprint ID:', error);
@@ -151,12 +151,17 @@ function attachEnrollHandlers() {
                 body: formData.toString()
             });
 
-            if (!response.ok) throw new Error('Failed to enroll employee');
+            const result = await response.json();
 
-            // Stop polling and redirect
-            clearInterval(pollInterval);
-            showModal('success', 'Employee enrolled successfully!');
-            setTimeout(() => navigateTo('/dashboard'), 1500);
+            if (response.status === 201 && result.status === "success") {
+                clearInterval(pollInterval);
+                showModal('success', 'Employee enrolled successfully!');
+                setTimeout(() => navigateTo('/dashboard'), 1500);
+            } else {
+                showModal('error', result.message || 'Error enrolling employee');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enroll';
+            }
         } catch (error) {
             showModal('error', 'Error enrolling employee: ' + error.message);
             submitBtn.disabled = false;
