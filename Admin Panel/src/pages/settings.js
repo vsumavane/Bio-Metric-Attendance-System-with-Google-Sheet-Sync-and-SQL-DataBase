@@ -1,6 +1,6 @@
 import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
-import { showModal } from '../components/Modal';
+import { showConfirmModal, showLoadingProgressModal, showModal } from '../components/Modal';
 import { getThemeToggleButtonHTML } from '../utils/theme';
 
 // Date utility functions
@@ -38,7 +38,7 @@ function renderSettings() {
     }
 
     // Get current date for defaults
-    const now = new Date();
+    const now = new Date(2022, 0, 1);
     const currentDate = dateUtils.formatDate(now);
 
     // Years range
@@ -325,22 +325,34 @@ function renderSettings() {
 
 async function loadSettings() {
     try {
-        const response = await apiFetch('/api/settings');
-        if (!response.ok) throw new Error('Failed to load settings');
+        // Fetch all settings in a single request
+        const response = await apiFetch('/api/getsettings');
         
-        const settings = await response.json();
+        if (!response.ok) {
+            throw new Error('Failed to fetch settings');
+        }
+
+        const data = await response.json();
         
-        // Populate form fields
-        document.getElementById('dbHost').value = settings.dbHost || '';
-        document.getElementById('dbName').value = settings.dbName || '';
-        document.getElementById('dbUser').value = settings.dbUser || '';
-        document.getElementById('dbPassword').value = settings.dbPassword || '';
-        document.getElementById('sheetId').value = settings.sheetId || '';
-        document.getElementById('sheetName').value = settings.sheetName || '';
-        document.getElementById('credentials').value = settings.credentials || '';
-        document.getElementById('autoSync').checked = settings.autoSync || false;
-        document.getElementById('syncInterval').value = settings.syncInterval || 5;
+        if (data.status !== 'success' || !data.data) {
+            throw new Error('Invalid response format');
+        }
+
+        const settings = data.data;
+
+        // Update all settings fields
+        document.getElementById('wifi_ssid').value = settings.ssid || '';
+        document.getElementById('wifi_password').value = settings.password || '';
+        document.getElementById('device_name').value = settings.mdns || '';
+        document.getElementById('googlesid').value = settings.gsid || '';
+        document.getElementById('mip').value = settings.ip || '';
+        document.getElementById('gateway').value = settings.gateway || '';
+        document.getElementById('dispname').value = settings.dispname || '';
+        document.getElementById('wwwid').value = settings.wwwid || '';
+        document.getElementById('wwwpass').value = settings.wwwpass || '';
+        
     } catch (error) {
+        console.error('Error loading settings:', error);
         showModal('error', 'Failed to load settings: ' + error.message);
     }
 }
@@ -374,6 +386,10 @@ function validateSettings() {
         const ipRegex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
         if (!mip || !ipRegex.test(mip)) return 'Manual IP is invalid.';
         if (!gateway || !ipRegex.test(gateway)) return 'Gateway is invalid.';
+    } else {
+        // Clear manual IP and gateway if not in manual mode
+        document.getElementById('mip').value = '';
+        document.getElementById('gateway').value = '';
     }
 
     // Date & Time validation
@@ -406,7 +422,29 @@ async function saveSettings() {
         showModal('error', validationError);
         return;
     }
-    
+
+    const response = await showConfirmModal(
+        'Are you sure you want to save the changes? This will restart the device.',
+        'Yes, Save',
+        'Cancel'
+    );
+    if (!response) {
+        return; // User canceled
+    }
+
+    // Show loading progress modal
+    showLoadingProgressModal(
+        10,
+        'Restarting device...',
+        'Device successfully restarted. Go to login page.',
+        async () => {
+            try {
+                navigateTo('/login');
+            } catch (error) {
+                showModal('error', 'Failed to navigate to login page: ' + error.message);
+            }
+        },
+    );
     // Disable save button and show loading state
     saveBtn.disabled = true;
     saveBtn.innerHTML = `
@@ -418,31 +456,53 @@ async function saveSettings() {
     `;
 
     try {
-        const settings = {
-            dbHost: document.getElementById('dbHost').value,
-            dbName: document.getElementById('dbName').value,
-            dbUser: document.getElementById('dbUser').value,
-            dbPassword: document.getElementById('dbPassword').value,
-            sheetId: document.getElementById('sheetId').value,
-            sheetName: document.getElementById('sheetName').value,
-            credentials: document.getElementById('credentials').value,
-            autoSync: document.getElementById('autoSync').checked,
-            syncInterval: parseInt(document.getElementById('syncInterval').value)
-        };
+        // Create FormData object to match backend's server.arg() format
+        const formData = new FormData();
+        
+        // Add all fields as form data with correct IDs
+        formData.append('ssid', document.getElementById('wifi_ssid').value.trim());
+        formData.append('password', document.getElementById('wifi_password').value);
+        formData.append('mdns', document.getElementById('device_name').value.trim());
+        formData.append('gsid', document.getElementById('googlesid').value.trim());
+        formData.append('aip', document.getElementById('aip').value);
+        formData.append('mip', document.getElementById('mip').value.trim());
+        formData.append('gateway', document.getElementById('gateway').value.trim());
+        formData.append('dispname', document.getElementById('dispname').value.trim());
+        formData.append('wwwid', document.getElementById('wwwid').value.trim());
+        formData.append('wwwpass', document.getElementById('wwwpass').value);
 
-        const response = await apiFetch('/settings', {
+        // Add date and time fields
+        formData.append('dtd', document.getElementById('dtd').value);
+        formData.append('dtm', document.getElementById('dtm').value);
+        formData.append('dty', document.getElementById('dty').value);
+        formData.append('tmh', document.getElementById('tmh').value);
+        formData.append('tmm', document.getElementById('tmm').value);
+        formData.append('tms', document.getElementById('tms').value);
+        formData.append('tmapm', document.getElementById('tmapm').value);
+
+        // Send as form data instead of JSON
+        const response = await apiFetch('/api/save', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(settings)
+            body: formData
         });
 
         if (!response.ok) throw new Error('Failed to save settings');
 
-        // Show success message
-        showModal('success', 'Settings saved successfully!');
-        
-        // Reload settings after a short delay
-        setTimeout(loadSettings, 1000);
+        const result = await response.text();
+        if (result === 'OK') {
+            
+            
+            // Disable edit mode and hide save button
+            const editModeToggle = document.getElementById('editModeToggle');
+            editModeToggle.click();
+            
+            // Wait for device to restart
+            setTimeout(() => {
+                window.location.reload();
+            }, 5000);
+        } else {
+            throw new Error('Unexpected response from server');
+        }
     } catch (error) {
         showModal('error', 'Failed to save settings: ' + error.message);
     } finally {
@@ -476,6 +536,7 @@ function attachDayOptionsHandler() {
 function attachSettingsHandlers() {
     // Back button handler
     document.getElementById('backBtn')?.addEventListener('click', () => {
+        cleanupSettingsInterval();
         navigateTo('/dashboard');
     });
 
@@ -498,17 +559,66 @@ function attachSettingsHandlers() {
         document.getElementById('tmapm').value = currentDate.ampm;
     });
 
+    // Add IP mode change handler
+    const ipModeSelect = document.getElementById('aip');
+    const manualIpInput = document.getElementById('mip');
+    
+    if (ipModeSelect && manualIpInput) {
+        // Initial state
+        manualIpInput.disabled = ipModeSelect.value !== '2';
+        
+        // Add change handler
+        ipModeSelect.addEventListener('change', () => {
+            manualIpInput.disabled = ipModeSelect.value !== '2';
+            if (ipModeSelect.value !== '2') {
+                manualIpInput.value = ''; // Clear manual IP when disabled
+            }
+        });
+    }
+
     // Add universal edit mode toggle handler
     const editModeToggle = document.getElementById('editModeToggle');
     let isEditMode = false;
+    let loadSettingsInterval = null;
+
+    // Function to cleanup interval
+    function cleanupSettingsInterval() {
+        if (loadSettingsInterval) {
+            clearInterval(loadSettingsInterval);
+            loadSettingsInterval = null;
+        }
+    }
+
+    // Function to start interval
+    function startSettingsInterval() {
+        cleanupSettingsInterval(); // Clear any existing interval
+        loadSettings(); // Load immediately
+        loadSettingsInterval = setInterval(loadSettings, 3000); // Then set up interval
+    }
 
     editModeToggle.addEventListener('click', () => {
         isEditMode = !isEditMode;
+
+        if (isEditMode) {
+            cleanupSettingsInterval(); // Stop auto-refresh in edit mode
+        } else {
+            startSettingsInterval(); // Resume auto-refresh when exiting edit mode
+        }
         
-        // Toggle all input fields
-        document.querySelectorAll('input, select').forEach(field => {
+        // Toggle all input fields except manual IP and IP mode
+        document.querySelectorAll('input:not(#mip), select:not(#aip)').forEach(field => {
             field.disabled = !isEditMode;
         });
+
+        // Handle IP mode select field
+        if (ipModeSelect) {
+            ipModeSelect.disabled = !isEditMode;
+        }
+
+        // Handle manual IP field separately based on IP mode
+        if (manualIpInput) {
+            manualIpInput.disabled = !isEditMode || ipModeSelect.value !== '2';
+        }
 
         // Update toggle button appearance
         editModeToggle.classList.toggle('bg-blue-50', isEditMode);
@@ -531,8 +641,17 @@ function attachSettingsHandlers() {
     // Initially hide save button
     document.getElementById('saveBtn').style.display = 'none';
 
+    // Add visibility change handler to pause/resume interval
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            cleanupSettingsInterval(); // Pause when page is hidden
+        } else if (!isEditMode) {
+            startSettingsInterval(); // Resume when page becomes visible again
+        }
+    });
+
     attachDayOptionsHandler();
-    loadSettings();
+    startSettingsInterval(); // Start initial interval
 }
 
 export default function Settings() {
