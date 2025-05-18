@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <SPI.h>
 #include <FS.h>
-#include "SPIFFS.h"
+#include <LittleFS.h>
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <Wire.h>
 #include <HTTPClient.h>
+#include <time.h>
 #include "src/Adafruit_SSD1306/Adafruit_GFX.h"
 #include "src/Adafruit_SSD1306/Adafruit_SSD1306.h"
 #include "src/Adafruit_SSD1306/RTClib.h"
@@ -136,6 +137,50 @@ void logWarning(const String& message) {
   Serial.println(message);
 }
 
+// Add NTP server configuration
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 0;  // UTC time
+const int daylightOffset_sec = 0;
+
+  
+  
+bool syncTime(){
+  display.clearDisplay();
+  rtc.begin();
+  LittleFS.begin(); // For LittleFS
+  logInfo("LittleFS initialized");
+
+  // Initialize NTP
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  logInfo("NTP configuration done");
+  
+  // Wait for time to be set
+  time_t now;
+  int retry = 0;
+  while ((now = time(nullptr)) < 100000 && retry < 10) {
+    logInfo("Waiting for time sync...");
+    delay(1000);
+    retry++;
+  }
+  
+  if (now >= 100000) {
+    logInfo("Time synchronized successfully");
+    char timeStr[32];
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+      strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+      logInfo("Current time: " + String(timeStr));
+      
+      rtc.adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                         timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));
+      logInfo("RTC updated with NTP time");
+      return true;
+    }
+  }
+  logWarning("Failed to sync time with NTP");
+  return false;
+}
+
 void setup() {
   booting = true;
   pinMode (Buzzer, OUTPUT);
@@ -150,68 +195,78 @@ void setup() {
   delay(1000);
   display.clearDisplay();
   
-  if (finger.verifyPassword()) {
-    logInfo("Fingerprint Sensor Connected Successfully");
-  } else {
-    display.clearDisplay();
-    display.setTextSize(2);             // Normal 1:1 pixel scale
-    display.setTextColor(SSD1306_WHITE);        // Draw white text
-    display.setCursor(25, 0);            // Start at top-left corner
-    display.println(("Sensor"));
-    display.setCursor(25, 35);
-    display.println("Error");
-    display.display();
-
-    logError("Unable to find Sensor");
-    delay(3000);
-    logError("Check Connections");
-
-    while (1) {
-      delay(1);
-    }
-  }
-  
   display.clearDisplay();
   rtc.begin();
-  SPIFFS.begin(); // For SPIFFS
-  logInfo("SPIFFS initialized");
+  LittleFS.begin(); // For LittleFS
+  logInfo("LittleFS initialized");
 
-  // Load values saved in SPIFFS
-  ssid_ = readFile(SPIFFS, ssidPath);
-  logDebug("Loaded SSID from SPIFFS");
-  pass_ = readFile(SPIFFS, passPath);
-  logDebug("Loaded WiFi password from SPIFFS");
-  ip_ = readFile(SPIFFS, ipPath);
-  logDebug("Loaded IP from SPIFFS");
-  gateway_ = readFile(SPIFFS, gatewayPath);
-  logDebug("Loaded Gateway from SPIFFS");
-  dispname_ = readFile(SPIFFS, dispnamePath);
+  // if (finger.verifyPassword()) {
+  //   logInfo("Fingerprint Sensor Connected Successfully");
+  // } else {
+  //   display.clearDisplay();
+  //   display.setTextSize(2);             // Normal 1:1 pixel scale
+  //   display.setTextColor(SSD1306_WHITE);        // Draw white text
+  //   display.setCursor(25, 0);            // Start at top-left corner
+  //   display.println(("Sensor"));
+  //   display.setCursor(25, 35);
+  //   display.println("Error");
+  //   display.display();
+
+  //   logError("Unable to find Sensor");
+  //   delay(3000);
+  //   logError("Check Connections");
+
+  //   while (1) {
+  //     delay(1);
+  //   }
+  // }
+
+  // Load values saved in LittleFS
+  ssid_ = readFile(LittleFS, ssidPath);
+  logDebug("Loaded SSID from LittleFS");
+  pass_ = readFile(LittleFS, passPath);
+  logDebug("Loaded WiFi password from LittleFS");
+  ip_ = readFile(LittleFS, ipPath);
+  logDebug("Loaded IP from LittleFS");
+  gateway_ = readFile(LittleFS, gatewayPath);
+  logDebug("Loaded Gateway from LittleFS");
+  dispname_ = readFile(LittleFS, dispnamePath);
   if (dispname_ == "") {
     dispname_ = DEFAULT_displayname;
   }
-  logDebug("Loaded display name from SPIFFS");
-  wwwid_ = readFile(SPIFFS, wwwidPath);
+  logDebug("Loaded display name from LittleFS");
+  wwwid_ = readFile(LittleFS, wwwidPath);
   if (wwwid_ == "") {
     wwwid_ = DEFAULT_wwwusername;
   }
-  logDebug("Loaded web username from SPIFFS");
-  wwwpass_ = readFile(SPIFFS, wwwpassPath);
+  logDebug("Loaded web username from LittleFS");
+  wwwpass_ = readFile(LittleFS, wwwpassPath);
   if (wwwpass_ == "") {
     wwwpass_ = DEFAULT_wwwpassword;
   }
-  logDebug("Loaded web password from SPIFFS");
-  gsid_ = readFile(SPIFFS, gsidPath);
-  logDebug("Loaded Google Sheet ID from SPIFFS");
-  mdnsdotlocalurl = readFile(SPIFFS, mdnsPath);
-  logDebug("Loaded mDNS URL from SPIFFS");
-  dhcpcheck = readFile(SPIFFS, dhcpcheckPath);
-  logDebug("Loaded DHCP check from SPIFFS");
+  logDebug("Loaded web password from LittleFS");
+  gsid_ = readFile(LittleFS, gsidPath);
+  logDebug("Loaded Google Sheet ID from LittleFS");
+  mdnsdotlocalurl = readFile(LittleFS, mdnsPath);
+  logDebug("Loaded mDNS URL from LittleFS");
+  dhcpcheck = readFile(LittleFS, dhcpcheckPath);
+  logDebug("Loaded DHCP check from LittleFS");
 
   display.drawBitmap(32, 0, logo_wifi, 64, 61, 1);
   display.display();
   display.clearDisplay();
 
   connectwifi();
+  
+  // Sync time after WiFi is connected
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!syncTime()) {
+      logError("Failed to sync time. JWT functionality may not work correctly.");
+    }
+  } else {
+    logError("No WiFi connection. Cannot sync time.");
+  }
+
   if (mdnsdotlocalurl == "") {
     mdnsdotlocalurl = DEFAULT_mdns;
   }
@@ -240,17 +295,18 @@ void setup() {
       };
     }; 
 
-
-server.on("/", HTTP_GET, handleRoot);
-server.onNotFound(handleNotFound);
-server.on("/api/insert", HTTP_POST, requireAuth(insertRecord));      // Create new record
-server.on("/api/delete", HTTP_DELETE, requireAuth(deleteRecord));    // Delete record
-server.on("/api/show", HTTP_GET, requireAuth(showRecords));          // Show all records
-server.on("/api/newRecordTable", HTTP_GET, requireAuth(newRecordTable)); // Get latest record info
-server.on("/api/save", HTTP_POST, requireAuth(save));                // Save settings
-server.on("/api/getsettings", HTTP_GET, requireAuth(getCurrentSettings));
-server.on("/api/login", HTTP_POST, handleLogin);                     // Login (POST for credentials)
-server.on("/api/signout", HTTP_POST, logout);                        // Logout
+  server.on("/", HTTP_GET, handleRoot);
+  server.onNotFound([]() {
+    loadFromSPIFFS(server.uri());
+  });
+  server.on("/api/insert", HTTP_POST, requireAuth(insertRecord));      // Create new record
+  server.on("/api/delete", HTTP_DELETE, requireAuth(deleteRecord));    // Delete record
+  server.on("/api/show", HTTP_GET, requireAuth(showRecords));          // Show all records
+  server.on("/api/newRecordTable", HTTP_GET, requireAuth(newRecordTable)); // Get latest record info
+  server.on("/api/save", HTTP_POST, requireAuth(save));                // Save settings
+  server.on("/api/getsettings", HTTP_GET, requireAuth(getCurrentSettings));
+  server.on("/api/login", HTTP_POST, handleLogin);                     // Login (POST for credentials)
+  server.on("/api/signout", HTTP_POST, logout);                        // Logout
 
   //here the list of headers to be recorded
   const char * headerkeys[] = {"User-Agent", "Cookie"} ;
@@ -259,17 +315,13 @@ server.on("/api/signout", HTTP_POST, logout);                        // Logout
   server.collectHeaders(headerkeys, headerkeyssize );
   server.begin();
 
-
   int rc;
   sqlite3_initialize();
 
   if (openDb("/spiffs/test1.db", &test1_db))
     return;
   booting = false;
-
 }
-
-
 
 void loop() {
 
@@ -293,7 +345,7 @@ void oledDisplayCenter(String text, int x, int y) {
   display.print(text); // text to display
 }
 
-// Read File from SPIFFS
+// Read File from LittleFS
 String readFile(fs::FS &fs, const char * path) {
   Serial.printf("Reading file: %s\r\n", path);
 
@@ -311,7 +363,7 @@ String readFile(fs::FS &fs, const char * path) {
   return fileContent;
 }
 
-// Write file to SPIFFS
+// Write file to LittleFS
 void writeFile(fs::FS &fs, const char * path, const char * message) {
   Serial.printf("Writing file: %s\r\n", path);
 
@@ -442,26 +494,90 @@ static int callback(void *data, int argc, char **argv, char **azColName) {
   return 0;
 }
 bool loadFromSPIFFS(String path) {
-  String dataType = "text/html";
+  // Helper to get MIME type based on file extension
+  auto getMimeType = [](const String& filename) -> String {
+    if (filename.endsWith(".html")) return "text/html";
+    if (filename.endsWith(".css"))  return "text/css";
+    if (filename.endsWith(".js"))   return "application/javascript";
+    if (filename.endsWith(".png"))  return "image/png";
+    if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg";
+    if (filename.endsWith(".ico"))  return "image/x-icon";
+    if (filename.endsWith(".svg"))  return "image/svg+xml";
+    if (filename.endsWith(".json")) return "application/json";
+    if (filename.endsWith(".txt"))  return "text/plain";
+    return "application/octet-stream";
+  };
 
   Serial.print("Requested page -> ");
   Serial.println(path);
 
-  if (SPIFFS.exists(path)) {
-    File dataFile = SPIFFS.open(path, "r");
-    if (!dataFile) {
-      handleNotFound();
-      return false;
+  // Log heap before serving
+  Serial.print("Free heap before serving: ");
+  Serial.println(ESP.getFreeHeap());
+
+  // If path does not end with '/' and does not have '.', serve /index.html
+  if (!path.endsWith("/") && path.indexOf('.') == -1) {
+    String indexPath = "/index.html";
+    if (LittleFS.exists(indexPath)) {
+      File file = LittleFS.open(indexPath, "r");
+      String mime = getMimeType(indexPath);
+      server.sendHeader("Cache-Control", "no-cache");
+      size_t sent = server.streamFile(file, mime);
+      file.close();
+      Serial.print("Free heap after serving: ");
+      Serial.println(ESP.getFreeHeap());
+      if (sent == 0) {
+        Serial.println("Warning: File was not fully sent (possibly client disconnected).");
+      }
+      return true;
     }
-    server.sendHeader("Content-Encoding", "gzip");
-    if (server.streamFile(dataFile, dataType) != dataFile.size()) {
-      Serial.println("Sent less data than expected!");
-    } else {
-      Serial.println("Gzipped page served!");
+    handleNotFound();
+    return false;
+  }
+
+  // Check for gzipped version first
+  String gzPath = path + ".gz";
+  if (LittleFS.exists(gzPath)) {
+    File file = LittleFS.open(gzPath, "r");
+    // Get MIME type for extension before .gz
+    int extIdx = path.lastIndexOf('.');
+    String mime = "application/octet-stream";
+    if (extIdx != -1) {
+      String ext = path.substring(extIdx);
+      mime = getMimeType(ext);
     }
-    dataFile.close();
+    // Don't set Content-Encoding header here as streamFile will do it
+    server.sendHeader("Cache-Control", "no-cache");
+    size_t sent = server.streamFile(file, mime);
+    file.close();
+    Serial.print("Free heap after serving: ");
+    Serial.println(ESP.getFreeHeap());
+    if (sent == 0) {
+      Serial.println("Warning: File was not fully sent (possibly client disconnected).");
+    }
     return true;
   }
+
+  // If path has extension other than .gz
+  if (path.indexOf('.') != -1) {
+    if (LittleFS.exists(path)) {
+      File file = LittleFS.open(path, "r");
+      String mime = getMimeType(path);
+      server.sendHeader("Cache-Control", "no-cache");
+      size_t sent = server.streamFile(file, mime);
+      file.close();
+      Serial.print("Free heap after serving: ");
+      Serial.println(ESP.getFreeHeap());
+      if (sent == 0) {
+        Serial.println("Warning: File was not fully sent (possibly client disconnected).");
+      }
+      return true;
+    }
+    handleNotFound();
+    return false;
+  }
+
+  // Not found
   handleNotFound();
   return false;
 }
@@ -500,11 +616,38 @@ String hmacSha256Base64Url(const String& data, const String& key) {
 
 // Create JWT
 String createJWT(const String& username) {
+  time_t now = time(nullptr);
+  if (now < 100000) {
+    logError("Time not synced yet, cannot create JWT");
+    // Try to sync time again
+    if (WiFi.status() == WL_CONNECTED && syncTime()) {
+      now = time(nullptr);
+    } else {
+      return "";
+    }
+  }
+
+  // Log the current time for debugging
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    char timeStr[32];
+    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    logInfo("Creating JWT at: " + String(timeStr));
+  }
+
   StaticJsonDocument<200> header, payload;
   header["alg"] = "HS256";
   header["typ"] = "JWT";
   payload["user"] = username;
-  payload["exp"] = (millis() / 1000) + 3600;
+  payload["exp"] = now + 3600;  // 1 hour expiry
+
+  // Log the expiration time for debugging
+  time_t expTime = now + 3600;
+  struct tm expTimeinfo;
+  localtime_r(&expTime, &expTimeinfo);
+  char expTimeStr[32];
+  strftime(expTimeStr, sizeof(expTimeStr), "%Y-%m-%d %H:%M:%S", &expTimeinfo);
+  logInfo("JWT will expire at: " + String(expTimeStr));
 
   String headerStr, payloadStr;
   serializeJson(header, headerStr);
@@ -521,6 +664,25 @@ String createJWT(const String& username) {
 
 // Validate JWT
 bool validateJWT(const String& token, String& username) {
+  time_t now = time(nullptr);
+  if (now < 100000) {
+    logError("Time not synced yet, cannot validate JWT");
+    // Try to sync time again
+    if (WiFi.status() == WL_CONNECTED && syncTime()) {
+      now = time(nullptr);
+    } else {
+      return false;
+    }
+  }
+
+  // Log the current time for debugging
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    char timeStr[32];
+    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    logInfo("Validating JWT at: " + String(timeStr));
+  }
+
   int dot1 = token.indexOf('.');
   int dot2 = token.indexOf('.', dot1 + 1);
   if (dot1 == -1 || dot2 == -1) return false;
@@ -551,13 +713,44 @@ bool validateJWT(const String& token, String& username) {
   StaticJsonDocument<256> payload;
   if (deserializeJson(payload, payloadJson) != DeserializationError::Ok) return false;
 
-  if ((millis() / 1000) > (unsigned long)(payload["exp"] | 0)) return false;
+  time_t expTime = (time_t)(payload["exp"] | 0);
+  
+  // Log the expiration time for debugging
+  struct tm expTimeinfo;
+  localtime_r(&expTime, &expTimeinfo);
+  char expTimeStr[32];
+  strftime(expTimeStr, sizeof(expTimeStr), "%Y-%m-%d %H:%M:%S", &expTimeinfo);
+  logInfo("JWT expires at: " + String(expTimeStr));
+
+  if (now > expTime) {
+    logWarning("JWT has expired");
+    return false;
+  }
+  
   username = payload["user"].as<String>();
   return true;
 }
 
 bool is_authenticated() {
   Serial.println("Enter is_authenticated (JWT)");
+  
+  // Check Authorization header first
+  if (server.hasHeader("Authorization")) {
+    String auth = server.header("Authorization");
+    Serial.print("Found Authorization header: ");
+    Serial.println(auth);
+    
+    if (auth.startsWith("Bearer ")) {
+      String jwt = auth.substring(7); // Remove "Bearer " prefix
+      String username;
+      if (validateJWT(jwt, username)) {
+        Serial.println("JWT Authentication Successful from Authorization header for user: " + username);
+        return true;
+      }
+    }
+  }
+  
+  // Fall back to cookie check
   if (server.hasHeader("Cookie")) {
     String cookie = server.header("Cookie");
     Serial.print("Found cookie: ");
@@ -565,14 +758,15 @@ bool is_authenticated() {
     int idx = cookie.indexOf("auth_token=");
     if (idx != -1) {
       int endIdx = cookie.indexOf(';', idx);
-      String jwt = cookie.substring(idx + 4, endIdx == -1 ? cookie.length() : endIdx);
+      String jwt = cookie.substring(idx + 11, endIdx == -1 ? cookie.length() : endIdx);
       String username;
       if (validateJWT(jwt, username)) {
-        Serial.println("JWT Authentication Successful for user: " + username);
+        Serial.println("JWT Authentication Successful from cookie for user: " + username);
         return true;
       }
     }
   }
+  
   Serial.println("JWT Authentication Failed");
   return false;
 }
@@ -582,6 +776,16 @@ bool is_authenticated() {
 //login page, also called for disconnect
 void handleLogin() {
   String msg;
+  // Log all request headers and arguments for debugging
+  logDebug("---- Incoming Login Request ----");
+  for (int i = 0; i < server.headers(); i++) {
+    logDebug("Header: " + server.headerName(i) + " = " + server.header(i));
+  }
+  for (int i = 0; i < server.args(); i++) {
+    logDebug("Arg: " + server.argName(i) + " = " + server.arg(i));
+  }
+  logDebug("---- End of Request ----");
+
   if (server.hasHeader("Cookie")) {
     logDebug("Found cookie in request");
     String cookie = server.header("Cookie");
@@ -598,7 +802,13 @@ void handleLogin() {
     logDebug("Login attempt received");
     if (server.arg("USERNAME") == wwwid_ && server.arg("PASSWORD") == wwwpass_) {
       String jwt = createJWT(server.arg("USERNAME"));
-      String cookie = "auth_token=" + jwt + "; Path=/; HttpOnly; SameSite=Strict";
+      if (jwt == "") {
+        logError("Failed to create JWT");
+        server.send(500, "application/json", "{\"status\":\"error\",\"message\":\"Internal server error\"}");
+        return;
+      }
+      // Set cookie without HttpOnly flag to allow JavaScript access
+      String cookie = "auth_token=" + jwt + "; Path=/; SameSite=Strict";
       server.sendHeader("Set-Cookie", cookie);
       server.sendHeader("Cache-Control", "no-cache");
       server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Login successful\"}");
@@ -621,7 +831,7 @@ void logout() {
 }
 /*--------------------------------------------------------*/
 void handleRoot() {
-  loadFromSPIFFS("/index.html.gz");
+  loadFromSPIFFS("/index.html");
 }
 
 void handleNotFound() {
@@ -640,7 +850,7 @@ void handleNotFound() {
   server.send(404, "application/json", message);
 }
 
-/*--------------------------------------------------------*/
+/*---------------------------------------.gz-----------------*/
 void insertRecord() {
   logInfo("New record insertion request received");
   String sql = "";
@@ -708,7 +918,7 @@ void save() {
   Serial.println(_wwwpass);
   if (_ssid != "")
   {
-    writeFile(SPIFFS, ssidPath, _ssid.c_str());
+    writeFile(LittleFS, ssidPath, _ssid.c_str());
   }
   else
   {
@@ -716,7 +926,7 @@ void save() {
   }
   if (_password != "")
   {
-    writeFile(SPIFFS, passPath, _password.c_str());
+    writeFile(LittleFS, passPath, _password.c_str());
   }
   else
   {
@@ -724,7 +934,7 @@ void save() {
   }
   if (_mdns != "")
   {
-    writeFile(SPIFFS, mdnsPath, _mdns.c_str());
+    writeFile(LittleFS, mdnsPath, _mdns.c_str());
   }
   else
   {
@@ -732,7 +942,7 @@ void save() {
   }
   if (_gsid != "")
   {
-    writeFile(SPIFFS, gsidPath, _gsid.c_str());
+    writeFile(LittleFS, gsidPath, _gsid.c_str());
   }
   else
   {
@@ -740,7 +950,7 @@ void save() {
   }
   if (_aip != "")
   {
-    writeFile(SPIFFS, dhcpcheckPath, _aip.c_str());
+    writeFile(LittleFS, dhcpcheckPath, _aip.c_str());
   }
   else
   {
@@ -748,7 +958,7 @@ void save() {
   }
   if (_mip != "")
   {
-    writeFile(SPIFFS, ipPath, _mip.c_str());
+    writeFile(LittleFS, ipPath, _mip.c_str());
   }
   else
   {
@@ -756,7 +966,7 @@ void save() {
   }
   if (_gateway != "")
   {
-    writeFile(SPIFFS, gatewayPath, _gateway.c_str());
+    writeFile(LittleFS, gatewayPath, _gateway.c_str());
   }
   else
   {
@@ -764,7 +974,7 @@ void save() {
   }
   if (_dispname != "")
   {
-    writeFile(SPIFFS, dispnamePath, _dispname.c_str());
+    writeFile(LittleFS, dispnamePath, _dispname.c_str());
   }
   else
   {
@@ -772,7 +982,7 @@ void save() {
   }
   if (_wwwid != "")
   {
-    writeFile(SPIFFS, wwwidPath, _wwwid.c_str());
+    writeFile(LittleFS, wwwidPath, _wwwid.c_str());
   }
   else
   {
@@ -780,7 +990,7 @@ void save() {
   }
   if (_wwwpass != "")
   {
-    writeFile(SPIFFS, wwwpassPath, _wwwpass.c_str());
+    writeFile(LittleFS, wwwpassPath, _wwwpass.c_str());
   }
   else
   {
@@ -1391,185 +1601,6 @@ uint8_t getFingerprintEnroll() {
       return p;
   }
 
-  Serial.println("Remove finger");
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);        // Draw white text
-  display.drawBitmap(47, 0, finger_bmp, 35, 45, 1);
-  oledDisplayCenter("Remove finger", 0, 60);
-  display.display();
-  digitalWrite (Buzzer, HIGH); //turn buzzer on
-  delay(500);
-  digitalWrite (Buzzer, LOW); //turn buzzer on
-  delay(500);
-  delay(1000);
-  p = 0;
-  while (p != FINGERPRINT_NOFINGER) {
-    p = finger.getImage();
-  }
-  Serial.print("ID "); Serial.println(id);
-  p = -1;
-  Serial.println("Place same finger again");
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);        // Draw white text
-  display.drawBitmap(47, 0, finger_bmp, 35, 45, 1);
-  oledDisplayCenter("Place same finger again", 0, 60);
-  display.display();
-  while (p != FINGERPRINT_OK) {
-    p = finger.getImage();
-    switch (p) {
-      case FINGERPRINT_OK:
-        Serial.println("Image taken");
-        display.clearDisplay();
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.drawBitmap(47, 0, ok_bmp, 35, 45, 1);
-        oledDisplayCenter("Image taken", 0, 60);
-        display.display();
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        delay(500);
-        break;
-      case FINGERPRINT_NOFINGER:
-        Serial.print(".");
-        break;
-      case FINGERPRINT_PACKETRECIEVEERR:
-        Serial.println("Communication error");
-        display.clearDisplay();
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-        oledDisplayCenter("Communication error", 0, 60);
-        display.display();
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        break;
-      case FINGERPRINT_IMAGEFAIL:
-        Serial.println("Imaging error");
-        display.clearDisplay();
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-        oledDisplayCenter("Imaging error", 0, 60);
-        display.display();
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        break;
-      default:
-        Serial.println("Unknown error");
-        display.clearDisplay();
-        display.setTextColor(SSD1306_WHITE);        // Draw white text
-        display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-        oledDisplayCenter("Unknown error", 0, 60);
-        display.display();
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, HIGH); //turn buzzer on
-        delay(500);
-        digitalWrite (Buzzer, LOW); //turn buzzer on
-        break;
-    }
-  }
-
-  // OK success!
-
-  p = finger.image2Tz(2);
-  switch (p) {
-    case FINGERPRINT_OK:
-      Serial.println("Image converted");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, ok_bmp, 35, 45, 1);
-      oledDisplayCenter("Image converted", 0, 60);
-      display.display();
-      delay(1000);
-      break;
-    case FINGERPRINT_IMAGEMESS:
-      Serial.println("Image too messy");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, messy_bmp, 35, 45, 1);
-      oledDisplayCenter("Image too messy", 0, 60);
-      display.display();
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      return p;
-    case FINGERPRINT_PACKETRECIEVEERR:
-      Serial.println("Communication error");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-      oledDisplayCenter("Communication error", 0, 60);
-      display.display();
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      return p;
-    case FINGERPRINT_FEATUREFAIL:
-      Serial.println("Could not find fingerprint features");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-      oledDisplayCenter("No fingerprint features", 0, 60);
-      display.display();
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      return p;
-    case FINGERPRINT_INVALIDIMAGE:
-      Serial.println("Could not find fingerprint features");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-      oledDisplayCenter("Imaging error", 0, 60);
-      display.display();
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      return p;
-    default:
-      Serial.println("Unknown error");
-      display.clearDisplay();
-      display.setTextColor(SSD1306_WHITE);        // Draw white text
-      display.drawBitmap(47, 0, invalid_bmp, 35, 45, 1);
-      oledDisplayCenter("Unknown error", 0, 60);
-      display.display();
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, HIGH); //turn buzzer on
-      delay(500);
-      digitalWrite (Buzzer, LOW); //turn buzzer on
-      return p;
-  }
-
   // OK converted!
   Serial.print("Creating model for #");  Serial.println(id);
 
@@ -1722,7 +1753,6 @@ void connectwifi()
     while (WiFi.status() != WL_CONNECTED) {
       delay(250);
       Serial.print(".");
-
     }
     if (WiFi.status() == WL_CONNECTED) {
       Serial.print("\n Connected. IP adress: ");
