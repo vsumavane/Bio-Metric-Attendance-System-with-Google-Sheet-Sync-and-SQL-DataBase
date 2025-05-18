@@ -8,13 +8,7 @@ import { showLoader, hideLoader } from '../components/loader.js';
 
 // Lazy-load page components
 const routes = {
-  '/': () => {
-    if (isAuthenticated()) {
-      navigateTo('/dashboard');
-    } else {
-      navigateTo('/login');
-    }
-  },
+  '/': () => Promise.resolve({ default: Dashboard }),
   '/login': () => Promise.resolve({ default: loginForm }),
   '/dashboard': () => Promise.resolve({ default: Dashboard }),
   '/enroll': () => Promise.resolve({ default: Enroll }),
@@ -31,6 +25,16 @@ const protectedRoutes = ['/dashboard', '/enroll', '/settings'];
  */
 export async function router(path) {
   const normalizedPath = path.toLowerCase();
+  
+  // Handle root path redirection
+  if (normalizedPath === '/') {
+    if (isAuthenticated()) {
+      return navigateTo('/dashboard');
+    } else {
+      return navigateTo('/login');
+    }
+  }
+
   const isProtected = protectedRoutes.map(r => r.toLowerCase()).includes(normalizedPath);
 
   if (isProtected && !isAuthenticated()) {
