@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { clearToken } from './auth.js';
+import { clearToken, getToken, TOKEN_KEY } from './auth.js';
 import { navigateTo } from './router.js';
 
 /**
@@ -9,8 +9,10 @@ import { navigateTo } from './router.js';
  * @returns {Promise<any>}
  */
 export async function apiFetch(url, options = {}) {
+  const token = getToken(TOKEN_KEY);
   const headers = {
     'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
 
@@ -18,6 +20,7 @@ export async function apiFetch(url, options = {}) {
     const response = await axios({
       url,
       headers,
+      withCredentials: true, // Important: include cookies in requests
       ...options,
     });
 
