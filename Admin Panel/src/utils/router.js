@@ -4,6 +4,7 @@ import Enroll from '../pages/enroll.js';
 import settings from '../pages/settings.js';
 import NotFound from '../pages/notFound.js';
 import loginForm from '../pages/loginForm.js';
+import { showLoader, hideLoader } from '../components/loader.js';
 
 // Lazy-load page components
 const routes = {
@@ -37,10 +38,22 @@ export async function router(path) {
     return navigateTo('/login');
   }
 
-  const loader = routes[normalizedPath] || routes['*'];
-  const { default: view } = await loader();
-  const app = document.getElementById('app');
-  app.innerHTML = await view();
+  // Show loader before page transition
+  showLoader();
+
+  try {
+    const loader = routes[normalizedPath] || routes['*'];
+    const { default: view } = await loader();
+    const app = document.getElementById('app');
+    app.innerHTML = await view();
+  } catch (error) {
+    console.error('Error loading page:', error);
+    const app = document.getElementById('app');
+    app.innerHTML = await NotFound();
+  } finally {
+    // Hide loader after page is loaded
+    hideLoader();
+  }
 }
 
 /**
