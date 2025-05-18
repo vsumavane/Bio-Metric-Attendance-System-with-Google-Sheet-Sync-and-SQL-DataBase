@@ -3,28 +3,252 @@ import { navigateTo } from '../utils/router';
 import { showModal } from '../components/Modal';
 import { getThemeToggleButtonHTML } from '../utils/theme';
 
+// Date utility functions
+const dateUtils = {
+    pad2: (n) => n.toString().padStart(2, '0'),
+    
+    getDaysInMonth: (month, year) => new Date(year, month, 0).getDate(),
+    
+    formatDate: (date) => ({
+        day: dateUtils.pad2(date.getDate()),
+        month: dateUtils.pad2(date.getMonth() + 1),
+        year: date.getFullYear(),
+        hour: dateUtils.pad2((date.getHours() % 12) || 12),
+        minute: dateUtils.pad2(date.getMinutes()),
+        second: dateUtils.pad2(date.getSeconds()),
+        ampm: date.getHours() < 12 ? '1' : '2'
+    }),
+    
+    isValidDate: (day, month, year) => {
+        const date = new Date(year, month - 1, day);
+        return date.getDate() === day && 
+               date.getMonth() === month - 1 && 
+               date.getFullYear() === year;
+    }
+};
+
 function renderSettings() {
     // Helper to generate day options based on month and year
     function getDayOptions(month, year) {
-        const daysInMonth = new Date(year, month, 0).getDate();
-        return Array.from({length: daysInMonth}, (_, i) => `<option value="${i+1}">${i+1}</option>`).join('');
+        const daysInMonth = dateUtils.getDaysInMonth(month, year);
+        return Array.from({length: daysInMonth}, (_, i) => {
+            const val = dateUtils.pad2(i + 1);
+            return `<option value="${val}">${i + 1}</option>`;
+        }).join('');
     }
 
     // Get current date for defaults
     const now = new Date();
-    const currentDay = now.getDate();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    const currentDate = dateUtils.formatDate(now);
 
     // Years range
-    const years = [];
-    for (let y = 2022; y <= 2030; y++) years.push(y);
+    const years = Array.from({length: 9}, (_, i) => 2022 + i);
 
     // Helper to format numbers to two digits
     function pad2(n) {
         return n.toString().padStart(2, '0');
     }
 
+    // Define settings sections and fields as an object
+    const settingsSections = [
+        {
+            title: "WiFi Settings",
+            fields: [
+                {
+                    label: "SSID",
+                    id: "wifi_ssid",
+                    type: "text",
+                    placeholder: "SSID",
+                },
+                {
+                    label: "WiFi Password",
+                    id: "wifi_password",
+                    type: "password",
+                    placeholder: "Password",
+                }
+            ]
+        },
+        {
+            title: "Device & Google Script",
+            fields: [
+                {
+                    label: "Device Name",
+                    id: "device_name",
+                    type: "text",
+                    placeholder: "Device Name",
+                },
+                {
+                    label: "Google Script ID",
+                    id: "googlesid",
+                    type: "text",
+                    placeholder: "Google Script ID",
+                },
+                {
+                    label: "Login Username",
+                    id: "wwwid",
+                    type: "text",
+                    placeholder: "Login Username",
+                },
+                {
+                    label: "Login Password",
+                    id: "wwwpass",
+                    type: "password",
+                    placeholder: "Login Password",
+                }
+            ]
+        },
+        {
+            title: "Organization & Network",
+            fields: [
+                {
+                    label: "Organization Name",
+                    id: "dispname",
+                    type: "text",
+                    placeholder: "Organization Name",
+                },
+                {
+                    label: "IP Mode",
+                    id: "aip",
+                    type: "select",
+                    options: [
+                        { value: "1", text: "Auto IP" },
+                        { value: "2", text: "Manual IP" }
+                    ]
+                },
+                {
+                    label: "Manual IP",
+                    id: "mip",
+                    type: "text",
+                    placeholder: "Manual IP",
+                },
+                {
+                    label: "Gateway",
+                    id: "gateway",
+                    type: "text",
+                    placeholder: "Gateway",
+                }
+            ]
+        }
+    ];
+
+    // Helper to render fields
+    function renderField(field) {
+        if (field.type === "select") {
+            return `
+                <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
+                <select id="${field.id}" name="${field.id}" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
+                    ${field.options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('')}
+                </select>
+            `;
+        } else {
+            return `
+                <label for="${field.id}" class="block text-sm font-medium text-gray-700 dark:text-gray-300">${field.label}</label>
+                <input 
+                    type="${field.type}" 
+                    id="${field.id}"
+                    name="${field.id}" 
+                    placeholder="${field.placeholder || ''}"
+                    class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
+                >
+            `;
+        }
+    }
+
+    // Render settings sections using the object
+    const settingsSectionsHTML = settingsSections.map(section => `
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
+            <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-white">${section.title}</h2>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    ${section.fields.map(field => `<div>${renderField(field)}</div>`).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Month mapping object
+    const months = [
+        { value: "01", text: "January" },
+        { value: "02", text: "February" },
+        { value: "03", text: "March" },
+        { value: "04", text: "April" },
+        { value: "05", text: "May" },
+        { value: "06", text: "June" },
+        { value: "07", text: "July" },
+        { value: "08", text: "August" },
+        { value: "09", text: "September" },
+        { value: "10", text: "October" },
+        { value: "11", text: "November" },
+        { value: "12", text: "December" }
+    ];
+
+    const dateTimeSection = `
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6 gap-3">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Date & Time</h2>
+                <button
+                    type="button"
+                    id="updateTimeBtn"
+                    class="inline-flex items-center px-4 py-2 border border-blue-600 dark:border-blue-400 text-sm font-medium rounded-md text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    title="Set to current date and time"
+                >
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Update to Current Time & Date
+                </button>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date</label>
+                        <div class="flex flex-row gap-2 w-full">
+                            <select id="dtd" name="dtd" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${getDayOptions(currentDate.month, currentDate.year)}
+                            </select>
+                            <select id="dtm" name="dtm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${months.map((m, i) => `<option value="${m.value}"${currentDate.month === m.value ? ' selected' : ''}>${m.text}</option>`).join('')}
+                            </select>
+                            <select id="dty" name="dty" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${years.map(y => `<option value="${y}"${currentDate.year === y ? ' selected' : ''}>${y}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex-1 mt-4 md:mt-0">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
+                        <div class="flex flex-row gap-2 w-full">
+                            <select id="tmh" name="tmh" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${Array.from({length: 12}, (_, i) => {
+                                    const val = dateUtils.pad2(i + 1);
+                                    return `<option value="${val}"${val === currentDate.hour ? ' selected' : ''}>${val}</option>`;
+                                }).join('')}
+                            </select>
+                            <select id="tmm" name="tmm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${Array.from({length: 60}, (_, i) => {
+                                    const val = dateUtils.pad2(i);
+                                    return `<option value="${val}"${val === currentDate.minute ? ' selected' : ''}>${val}</option>`;
+                                }).join('')}
+                            </select>
+                            <select id="tms" name="tms" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                ${Array.from({length: 60}, (_, i) => {
+                                    const val = dateUtils.pad2(i);
+                                    return `<option value="${val}"${val === currentDate.second ? ' selected' : ''}>${val}</option>`;
+                                }).join('')}
+                            </select>
+                            <select id="tmapm" name="tmapm" class="flex-1 min-w-0 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors duration-200">
+                                <option value="1"${currentDate.ampm === '1' ? ' selected' : ''}>AM</option>
+                                <option value="2"${currentDate.ampm === '2' ? ' selected' : ''}>PM</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Return the full settings page
     return `
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
             <!-- Header -->
@@ -61,210 +285,8 @@ function renderSettings() {
             <!-- Main Content -->
             <main class="max-w-7xl mx-auto py-6 px-2 sm:px-6 lg:px-8">
                 <div class="space-y-6">
-                    <!-- WiFi Settings -->
-                    <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
-                        <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
-                            <h2 class="text-lg font-medium text-gray-900 dark:text-white">WiFi Settings</h2>
-                        </div>
-                        <div class="px-4 py-5 sm:p-6">
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label for="wifi_ssid" class="block text-sm font-medium text-gray-700 dark:text-gray-300">SSID</label>
-                                    <input 
-                                        type="text" 
-                                        id="wifi_ssid"
-                                        name="ssid" 
-                                        placeholder="SSID"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="wifi_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">WiFi Password</label>
-                                    <input 
-                                        type="password" 
-                                        id="wifi_password"
-                                        name="password" 
-                                        placeholder="Password"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Device & Google Script Settings -->
-                    <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
-                        <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
-                            <h2 class="text-lg font-medium text-gray-900 dark:text-white">Device & Google Script</h2>
-                        </div>
-                        <div class="px-4 py-5 sm:p-6">
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label for="device_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Device Name</label>
-                                    <input 
-                                        type="text" 
-                                        id="device_name"
-                                        name="MDNS"
-                                        placeholder="Device Name"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="googlesid" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Google Script ID</label>
-                                    <input 
-                                        type="text" 
-                                        id="googlesid"
-                                        name="GSID"
-                                        placeholder="Google Script ID"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="wwwid" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Login Username</label>
-                                    <input 
-                                        type="text" 
-                                        id="wwwid"
-                                        name="wwwid"
-                                        placeholder="Login Username"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="wwwpass" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Login Password</label>
-                                    <input 
-                                        type="password" 
-                                        id="wwwpass"
-                                        name="wwwpass"
-                                        placeholder="Login Password"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Organization & Network Settings -->
-                    <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
-                        <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6">
-                            <h2 class="text-lg font-medium text-gray-900 dark:text-white">Organization & Network</h2>
-                        </div>
-                        <div class="px-4 py-5 sm:p-6">
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label for="dispname" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Organization Name</label>
-                                    <input 
-                                        type="text" 
-                                        id="dispname"
-                                        name="dispname"
-                                        placeholder="Organization Name"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="aip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">IP Mode</label>
-                                    <select id="aip" name="aip" class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                        <option value="1" selected>Auto IP</option>
-                                        <option value="2">Manual IP</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label for="mip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Manual IP</label>
-                                    <input 
-                                        type="text" 
-                                        id="mip"
-                                        name="mnip"
-                                        placeholder="Manual IP"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                                <div>
-                                    <label for="gateway" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Gateway</label>
-                                    <input 
-                                        type="text" 
-                                        id="gateway"
-                                        name="gateway"
-                                        placeholder="Gateway"
-                                        class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-                                    >
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Date & Time Settings -->
-                    <div class="bg-white dark:bg-gray-800 shadow rounded-lg transition-colors duration-200">
-                        <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-                            <h2 class="text-lg font-medium text-gray-900 dark:text-white">Date & Time</h2>
-                            <button
-                                type="button"
-                                id="updateTimeBtn"
-                                class="inline-flex items-center px-3 py-1 border border-blue-600 dark:border-blue-400 text-sm font-medium rounded-md text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 w-full sm:w-auto"
-                                title="Set to current date and time"
-                            >
-                                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Update to Current Time
-                            </button>
-                        </div>
-                        <div class="px-4 py-5 sm:p-6">
-                            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                                    <div class="flex flex-col xs:flex-row xs:space-x-2 space-y-2 xs:space-y-0">
-                                        <select id="dtd" name="dtd" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            ${getDayOptions(currentMonth, currentYear)}
-                                        </select>
-                                        <select id="dtm" name="dtm" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            <option value="01"${currentMonth===1?' selected':''}>January</option>
-                                            <option value="02"${currentMonth===2?' selected':''}>February</option>
-                                            <option value="03"${currentMonth===3?' selected':''}>March</option>
-                                            <option value="04"${currentMonth===4?' selected':''}>April</option>
-                                            <option value="05"${currentMonth===5?' selected':''}>May</option>
-                                            <option value="06"${currentMonth===6?' selected':''}>June</option>
-                                            <option value="07"${currentMonth===7?' selected':''}>July</option>
-                                            <option value="08"${currentMonth===8?' selected':''}>August</option>
-                                            <option value="09"${currentMonth===9?' selected':''}>September</option>
-                                            <option value="10"${currentMonth===10?' selected':''}>October</option>
-                                            <option value="11"${currentMonth===11?' selected':''}>November</option>
-                                            <option value="12"${currentMonth===12?' selected':''}>December</option>
-                                        </select>
-                                        <select id="dty" name="dty" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            ${years.map(y => `<option value="${y}"${currentYear===y?' selected':''}>${y}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Time</label>
-                                    <div class="flex flex-col xs:flex-row xs:space-x-2 space-y-2 xs:space-y-0">
-                                        <select id="tmh" name="tmh" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            ${Array.from({length: 12}, (_, i) => {
-                                                const val = pad2(i+1);
-                                                return `<option value="${val}"${i+1===((now.getHours()%12)||12)?' selected':''}>${val}</option>`;
-                                            }).join('')}
-                                        </select>
-                                        <select id="tmm" name="tmm" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            ${Array.from({length: 60}, (_, i) => {
-                                                const val = pad2(i);
-                                                return `<option value="${val}"${i===now.getMinutes()?' selected':''}>${val}</option>`;
-                                            }).join('')}
-                                        </select>
-                                        <select id="tms" name="tms" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            ${Array.from({length: 60}, (_, i) => {
-                                                const val = pad2(i);
-                                                return `<option value="${val}"${i===now.getSeconds()?' selected':''}>${val}</option>`;
-                                            }).join('')}
-                                        </select>
-                                        <select id="tmapm" name="tmapm" class="border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200">
-                                            <option value="1"${now.getHours()<12?' selected':''}>AM</option>
-                                            <option value="2"${now.getHours()>=12?' selected':''}>PM</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                    ${settingsSectionsHTML}
+                    ${dateTimeSection}
                     <!-- Save Button -->
                     <div class="flex flex-col sm:flex-row justify-end">
                         <button 
@@ -283,7 +305,7 @@ function renderSettings() {
 
 async function loadSettings() {
     try {
-        const response = await apiFetch('/settings');
+        const response = await apiFetch('/api/settings');
         if (!response.ok) throw new Error('Failed to load settings');
         
         const settings = await response.json();
@@ -341,7 +363,15 @@ function validateSettings() {
     const tmh = document.getElementById('tmh').value;
     const tmm = document.getElementById('tmm').value;
     const tms = document.getElementById('tms').value;
-    if (!dtd || !dtm || !dty || !tmh || !tmm || !tms) return 'Date and Time fields are required.';
+    
+    if (!dtd || !dtm || !dty || !tmh || !tmm || !tms) {
+        return 'Date and Time fields are required.';
+    }
+
+    // Validate date using the new utility
+    if (!dateUtils.isValidDate(parseInt(dtd), parseInt(dtm), parseInt(dty))) {
+        return 'Invalid date selected.';
+    }
 
     // All validations passed
     return null;
@@ -402,6 +432,27 @@ async function saveSettings() {
     }
 }
 
+function attachDayOptionsHandler() {
+    const daySelect = document.getElementById('dtd');
+    const monthSelect = document.getElementById('dtm');
+    const yearSelect = document.getElementById('dty');
+    if (!daySelect || !monthSelect || !yearSelect) return;
+
+    function updateDays() {
+        const month = parseInt(monthSelect.value, 10);
+        const year = parseInt(yearSelect.value, 10);
+        const daysInMonth = dateUtils.getDaysInMonth(month, year);
+        const currentDay = parseInt(daySelect.value, 10) || 1;
+        daySelect.innerHTML = Array.from({length: daysInMonth}, (_, i) => {
+            const val = dateUtils.pad2(i + 1);
+            return `<option value="${val}"${i + 1 === currentDay ? ' selected' : ''}>${i + 1}</option>`;
+        }).join('');
+    }
+
+    monthSelect.addEventListener('change', updateDays);
+    yearSelect.addEventListener('change', updateDays);
+}
+
 function attachSettingsHandlers() {
     // Back button handler
     document.getElementById('backBtn')?.addEventListener('click', () => {
@@ -413,23 +464,21 @@ function attachSettingsHandlers() {
 
     // Update to Current Time button handler
     document.getElementById('updateTimeBtn')?.addEventListener('click', () => {
-        const now = new Date();
-        // Date
-        document.getElementById('dtd').value = now.getDate().toString().padStart(2, '0');
-        document.getElementById('dtm').value = (now.getMonth() + 1).toString().padStart(2, '0');
-        document.getElementById('dty').value = now.getFullYear();
-        // Time
-        let hour = now.getHours();
-        let ampm = hour < 12 ? '1' : '2';
-        hour = hour % 12;
-        if (hour === 0) hour = 12;
-        document.getElementById('tmh').value = hour.toString().padStart(2, '0');
-        document.getElementById('tmm').value = now.getMinutes().toString().padStart(2, '0');
-        document.getElementById('tms').value = now.getSeconds().toString().padStart(2, '0');
-        document.getElementById('tmapm').value = ampm;
+        const currentDate = dateUtils.formatDate(new Date());
+        
+        // Update date fields
+        document.getElementById('dtd').value = currentDate.day;
+        document.getElementById('dtm').value = currentDate.month;
+        document.getElementById('dty').value = currentDate.year;
+        
+        // Update time fields
+        document.getElementById('tmh').value = currentDate.hour;
+        document.getElementById('tmm').value = currentDate.minute;
+        document.getElementById('tms').value = currentDate.second;
+        document.getElementById('tmapm').value = currentDate.ampm;
     });
 
-    // Load initial settings
+    attachDayOptionsHandler();
     loadSettings();
 }
 
