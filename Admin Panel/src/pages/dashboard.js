@@ -1,7 +1,7 @@
 // dashboard.js
 import { apiFetch } from '../utils/api';
 import { navigateTo } from '../utils/router';
-import { showModal } from '../components/Modal';
+import { showConfirmModal, showModal } from '../components/Modal';
 import { getThemeToggleButtonHTML } from '../utils/theme';
 import logoIcon from '../assets/Logo.png';
 
@@ -215,14 +215,55 @@ async function loadEmployeeData() {
     if (!tableBody) return;
 
     try {
-        const response = await apiFetch('/show');
+        const response = await apiFetch('/api/show');
         if (!response.ok) throw new Error('Failed to load employee data');
-        
-        const employees = await response.json();
-        
+
+        const html = await response.text();
+
+        // Try to extract the table rows from the HTML response
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        const table = tempDiv.querySelector('table');
+        if (!table) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <div class="flex flex-col items-center justify-center">
+                            <svg class="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            </svg>
+                            No employees found
+                        </div>
+                    </td>
+                </tr>
+            `;
+            totalEmployees.textContent = '0';
+            activeToday.textContent = '0';
+            lastUpdated.textContent = new Date().toLocaleTimeString();
+            return;
+        }
+
+        // Get all rows except the header
+        const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+
+        // Parse employee data from each row
+        const employees = rows.map(row => {
+            const cells = row.querySelectorAll('td');
+            return {
+                employee_id: cells[1]?.textContent.trim() || '',
+                name: cells[2]?.textContent.trim() || '',
+                email: cells[3]?.textContent.trim() || '',
+                position: cells[4]?.textContent.trim() || '',
+                fpid: cells[5]?.textContent.trim() || '',
+                // No last_active info in this response, so leave blank
+                last_active: ''
+            };
+        });
+
         // Update stats
         totalEmployees.textContent = employees.length;
-        activeToday.textContent = employees.filter(e => e.last_active === new Date().toISOString().split('T')[0]).length;
+        activeToday.textContent = '-'; // Not available in this response
         lastUpdated.textContent = new Date().toLocaleTimeString();
         
         if (employees.length === 0) {
@@ -265,7 +306,8 @@ async function loadEmployeeData() {
 }
 
 async function deleteEmployee(employeeId) {
-    if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+    const confirmed = await showConfirmModal('Are you sure you want to delete this employee? This action cannot be undone.');
+    if (!confirmed) {
         return;
     }
 
@@ -329,7 +371,7 @@ function attachDashboardHandlers() {
 
     document.getElementById('signoutBtn')?.addEventListener('click', async () => {
         try {
-            await apiFetch('/signout', { method: 'POST' });
+            await apiFetch('/api/signout', { method: 'POST' });
             navigateTo('/');
         } catch (error) {
             showModal('error', 'Error signing out: ' + error.message);
