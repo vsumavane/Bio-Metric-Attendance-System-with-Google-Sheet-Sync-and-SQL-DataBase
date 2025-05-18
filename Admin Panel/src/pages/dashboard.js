@@ -206,6 +206,8 @@ function renderDashboard() {
     `;
 }
 
+let dashboardDataInterval = null;
+
 async function loadEmployeeData() {
     const tableBody = document.getElementById('employeeTableBody');
     const totalEmployees = document.getElementById('totalEmployees');
@@ -328,6 +330,12 @@ async function deleteEmployee(employeeId) {
 }
 
 function attachDashboardHandlers() {
+    // Clear previous interval if any
+    if (dashboardDataInterval) {
+        clearInterval(dashboardDataInterval);
+        dashboardDataInterval = null;
+    }
+
     // Burger menu toggle logic
     const menuBtn = document.getElementById('dashboardMenuBtn');
     const mobileMenu = document.getElementById('dashboardMobileMenu');
@@ -370,6 +378,11 @@ function attachDashboardHandlers() {
     });
 
     document.getElementById('signoutBtn')?.addEventListener('click', async () => {
+        // Clear interval on signout
+        if (dashboardDataInterval) {
+            clearInterval(dashboardDataInterval);
+            dashboardDataInterval = null;
+        }
         try {
             await apiFetch('/api/signout', { method: 'POST' });
             navigateTo('/');
@@ -395,8 +408,8 @@ function attachDashboardHandlers() {
     // Load initial data
     loadEmployeeData();
 
-    // Refresh data every 30 seconds
-    setInterval(loadEmployeeData, 30000);
+    // Refresh data every 30 seconds, clear previous if any
+    dashboardDataInterval = setInterval(loadEmployeeData, 30000);
 }
 
 export default function Dashboard() {
