@@ -3,7 +3,7 @@ import { navigateTo } from '../utils/router';
 import { showModal } from '../components/Modal';
 import { initTheme } from '../utils/theme';
 import logo from '../assets/LogoFullTransparent.png';
-import { getToken, isTokenFormatValid, isTokenExpired, TOKEN_KEY } from '../utils/auth';
+import { getToken, isTokenFormatValid, isTokenExpired, TOKEN_KEY, setToken } from '../utils/auth';
 
 function renderLoginForm() {
     return `
@@ -100,23 +100,39 @@ function attachLoginHandler() {
             params.append('USERNAME', username);
             params.append('PASSWORD', password);
 
+            console.log('Sending login request...');
             const response = await apiFetch(`/api/login?${params.toString()}`, {
-                method: 'POST', // or 'GET' if your backend expects GET
-                // No body, no Content-Type header
+                method: 'POST',
+                credentials: 'include' // Important: include cookies in the request
             });
+
+            console.log('Login response:', response);
+            console.log('All cookies:', document.cookie);
 
             if (response.redirected) {
                 navigateTo(response.redirected);
                 return;
             }
 
-            const text = await response.text();
-            if (text.includes('Wrong username/password')) {
-                showModal('error', 'Wrong username or password! Try again.');
+            // apiFetch already returns parsed JSON
+            if (response.status === 'success' && response.message === 'Login successful') {
+                // Check if token exists in cookies
+                const token = getToken(TOKEN_KEY);
+                console.log('Token after login:', token ? 'exists' : 'null');
+                
+                if (token) {
+                    console.log('Login successful, token received');
+                    navigateTo('/dashboard');
+                    return;
+                }
+                console.error('Login successful but token not found in cookies');
+                showModal('error', 'Login successful but token not received');
             } else {
-                showModal('error', 'Login failed. Please try again.');
+                console.error('Login failed:', response.message);
+                showModal('error', response.message || 'Login failed. Please try again.');
             }
         } catch (err) {
+            console.error('Login error:', err);
             showModal('error', err.message);
         } finally {
             // Reset button state
