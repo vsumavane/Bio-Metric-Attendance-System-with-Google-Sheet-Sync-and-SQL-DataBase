@@ -97,9 +97,7 @@ void save();
 void deleteRecord();
 void showRecords();
 void newRecordTable();
-void getssid();
-void getmdns();
-void getip();
+void getCurrentSettings();
 void getfpid();
 int FingerprintID();
 uint8_t deleteFingerprint();
@@ -250,10 +248,7 @@ server.on("/api/delete", HTTP_DELETE, requireAuth(deleteRecord));    // Delete r
 server.on("/api/show", HTTP_GET, requireAuth(showRecords));          // Show all records
 server.on("/api/newRecordTable", HTTP_GET, requireAuth(newRecordTable)); // Get latest record info
 server.on("/api/save", HTTP_POST, requireAuth(save));                // Save settings
-server.on("/api/getssid", HTTP_GET, requireAuth(getssid));
-server.on("/api/getfpid", HTTP_GET, requireAuth(getfpid));
-server.on("/api/getmdns", HTTP_GET, requireAuth(getmdns));
-server.on("/api/getip", HTTP_GET, requireAuth(getip));
+server.on("/api/getsettings", HTTP_GET, requireAuth(getCurrentSettings));
 server.on("/api/login", HTTP_POST, handleLogin);                     // Login (POST for credentials)
 server.on("/api/signout", HTTP_POST, logout);                        // Logout
 
@@ -920,18 +915,19 @@ void newRecordTable() {
 
 
 /*--------------------------------------------------------*/
-void getssid() {
-  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + ssid_ + "\"}");
-}
-/*--------------------------------------------------------*/
-/*--------------------------------------------------------*/
-void getmdns() {
-  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + mdnsdotlocalurl + "\"}");
-}
-/*--------------------------------------------------------*/
-/*--------------------------------------------------------*/
-void getip() {
-  server.send(200, "application/json", "{\"status\":\"success\",\"data\":\"" + ip_ + "\"}");
+void getCurrentSettings() {
+  String json = "{\"status\":\"success\",\"data\":{";
+  json += "\"ssid\":\"" + ssid_ + "\",";
+  json += "\"password\":\"" + pass_ + "\",";
+  json += "\"mdns\":\"" + mdnsdotlocalurl + "\",";
+  json += "\"gsid\":\"" + gsid_ + "\",";
+  json += "\"ip\":\"" + ip_ + "\",";
+  json += "\"gateway\":\"" + gateway_ + "\",";
+  json += "\"dispname\":\"" + dispname_ + "\",";
+  json += "\"wwwid\":\"" + wwwid_ + "\",";
+  json += "\"wwwpass\":\"" + wwwpass_ + "\"}}";
+
+  server.send(200, "application/json", json);
 }
 /*--------------------------------------------------------*/
 /*--------------------------------------------------------*/
