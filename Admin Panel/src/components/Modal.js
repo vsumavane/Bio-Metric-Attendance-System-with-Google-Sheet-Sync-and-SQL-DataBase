@@ -233,3 +233,126 @@ export function showConfirmModal(message, confirmText = 'Confirm', cancelText = 
         cancelBtn.addEventListener('click', () => closeModal(false));
     });
 }
+
+export function showLoadingProgressModal(durationSeconds, loadingMessage, completionMessage, onConfirm = () => {}) {
+    // Remove any existing modal
+    const existingModal = document.getElementById('modal-container');
+    if (existingModal) {
+        if(existingModal._timeoutId) {
+            clearTimeout(existingModal._timeoutId);
+        }
+        existingModal.remove();
+    }
+
+    // Create modal container
+    const modalContainer = document.createElement('div');
+    modalContainer.id = 'modal-container';
+    modalContainer.className = 'fixed inset-0 overflow-y-auto';
+    modalContainer.setAttribute('aria-labelledby', 'modal-title');
+    modalContainer.setAttribute('role', 'dialog');
+    modalContainer.setAttribute('aria-modal', 'true');
+
+    modalContainer.innerHTML = `
+        <div class="fixed inset-0 z-50 overflow-y-auto">
+            <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+                <!-- Backdrop -->
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 dark:bg-gray-900 opacity-75 backdrop-blur-sm"></div>
+                </div>
+
+                <!-- Modal Panel -->
+                <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6">
+                    <div class="flex flex-col items-center space-y-4">
+                        <!-- Loading Spinner -->
+                        <div class="flex items-center justify-center">
+                            <div class="relative">
+                                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <div class="h-6 w-6 rounded-full bg-white dark:bg-gray-800"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div class="w-full space-y-2">
+                            <!-- Progress Bar Container -->
+                            <div class="relative h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden shadow-inner">
+                                <div id="progressBar" class="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-300 ease-out" style="width: 0%">
+                                    <div class="h-full w-full bg-white/20 animate-pulse"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Progress Percentage -->
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Progress</span>
+                                <span id="progressPercentage" class="text-xs font-medium text-gray-500 dark:text-gray-400">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Loading Message -->
+                        <div class="w-full text-center">
+                            <p id="loadingMessage" class="text-sm font-medium text-gray-600 dark:text-gray-300">${loadingMessage}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalContainer);
+
+    const progressBar = modalContainer.querySelector('#progressBar');
+    const progressPercentage = modalContainer.querySelector('#progressPercentage');
+    const startTime = Date.now();
+    const endTime = startTime + (durationSeconds * 1000);
+
+    function updateProgress() {
+        const currentTime = Date.now();
+        const elapsed = currentTime - startTime;
+        const total = endTime - startTime;
+        const progress = Math.min((elapsed / total) * 100, 100);
+        
+        // Update progress bar with smooth animation
+        progressBar.style.width = `${progress}%`;
+        // Update percentage text
+        progressPercentage.textContent = `${Math.round(progress)}%`;
+
+        if (currentTime < endTime) {
+            requestAnimationFrame(updateProgress);
+        } else {
+            // Ensure we show 100%
+            progressBar.style.width = '100%';
+            progressPercentage.textContent = '100%';
+            
+            // Fade out animation
+            const modalElement = modalContainer.querySelector('.transform');
+            modalElement.style.opacity = '0';
+            modalElement.style.transform = 'scale(0.95)';
+            
+            setTimeout(() => {
+                modalContainer.remove();
+                // Show completion message and handle confirmation
+                showConfirmModal(completionMessage, 'OK', 'Cancel')
+                    .then(confirmed => {
+                        if (confirmed) {
+                            onConfirm();
+                        }
+                    });
+            }, 300);
+        }
+    }
+
+    // Start progress animation
+    requestAnimationFrame(updateProgress);
+
+    // Store cleanup function
+    modalContainer._cleanup = () => {
+        if (modalContainer._animationFrame) {
+            cancelAnimationFrame(modalContainer._animationFrame);
+        }
+        modalContainer.remove();
+    };
+
+    // Return cleanup function
+    return modalContainer._cleanup;
+}
